@@ -5,8 +5,6 @@ const fileInput = document.getElementById("fileInput");
 const folderInput = document.getElementById("folderInput");
 const searchInput = document.getElementById("searchInput");
 const fileGrid = document.getElementById("fileGrid");
-const contentTableWrap = document.getElementById("contentTableWrap");
-const contentTableBody = document.getElementById("contentTableBody");
 const fileCount = document.getElementById("fileCount");
 const emptyState = document.getElementById("emptyState");
 const refreshBtn = document.getElementById("refreshBtn");
@@ -27,6 +25,12 @@ const shareUrlInput = document.getElementById("shareUrlInput");
 const shareCopyBtn = document.getElementById("shareCopyBtn");
 const shareEmailBtn = document.getElementById("shareEmailBtn");
 const shareCloseBtn = document.getElementById("shareCloseBtn");
+const appModal = document.getElementById("appModal");
+const appModalTitle = document.getElementById("appModalTitle");
+const appModalMessage = document.getElementById("appModalMessage");
+const appModalInput = document.getElementById("appModalInput");
+const appModalCancelBtn = document.getElementById("appModalCancelBtn");
+const appModalOkBtn = document.getElementById("appModalOkBtn");
 const pickFilesBtn = document.getElementById("pickFilesBtn");
 const downloadCurrentFolderBtn = document.getElementById("downloadCurrentFolderBtn");
 const shareCurrentFolderBtn = document.getElementById("shareCurrentFolderBtn");
@@ -43,6 +47,88 @@ const THEME_KEY = "eyedrive.theme.v1";
 let lastShare = { url: "", name: "" };
 /** ids de carpetas expandidas en el árbol lateral */
 const expandedFolderIds = new Set();
+
+function showAppModal({ title, message, mode, defaultValue, okText, cancelText, placeholder }) {
+  return new Promise((resolve) => {
+    if (!appModal || !appModalTitle || !appModalMessage || !appModalOkBtn || !appModalCancelBtn || !appModalInput) {
+      if (mode === "prompt") resolve({ ok: true, value: defaultValue || "" });
+      else if (mode === "confirm") resolve({ ok: true });
+      else resolve({ ok: true });
+      return;
+    }
+    appModalTitle.textContent = title || "Eyedrive";
+    appModalMessage.textContent = message || "";
+    appModalOkBtn.textContent = okText || "Aceptar";
+    appModalCancelBtn.textContent = cancelText || "Cancelar";
+    appModalCancelBtn.hidden = mode === "alert";
+
+    if (mode === "prompt") {
+      appModalInput.hidden = false;
+      appModalInput.value = defaultValue || "";
+      appModalInput.placeholder = placeholder || "";
+    } else {
+      appModalInput.hidden = true;
+      appModalInput.value = "";
+      appModalInput.placeholder = "";
+    }
+
+    let done = false;
+    const closeAndResolve = (result) => {
+      if (done) return;
+      done = true;
+      cleanup();
+      if (appModal.open) appModal.close();
+      resolve(result);
+    };
+    const onOk = () => closeAndResolve(mode === "prompt" ? { ok: true, value: appModalInput.value } : { ok: true });
+    const onCancel = () => closeAndResolve(mode === "prompt" ? { ok: false, value: null } : { ok: false });
+    const onClose = () => onCancel();
+    const onInputKey = (ev) => {
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        onOk();
+      }
+    };
+    const cleanup = () => {
+      appModalOkBtn.removeEventListener("click", onOk);
+      appModalCancelBtn.removeEventListener("click", onCancel);
+      appModal.removeEventListener("cancel", onCancel);
+      appModal.removeEventListener("close", onClose);
+      appModalInput.removeEventListener("keydown", onInputKey);
+    };
+
+    appModalOkBtn.addEventListener("click", onOk);
+    appModalCancelBtn.addEventListener("click", onCancel);
+    appModal.addEventListener("cancel", onCancel);
+    appModal.addEventListener("close", onClose);
+    appModalInput.addEventListener("keydown", onInputKey);
+    appModal.showModal();
+    if (mode === "prompt") appModalInput.focus();
+    else appModalOkBtn.focus();
+  });
+}
+
+async function appAlert(message, title = "Eyedrive") {
+  await showAppModal({ title, message, mode: "alert", okText: "Aceptar" });
+}
+
+async function appConfirm(message, title = "Confirmar") {
+  const r = await showAppModal({ title, message, mode: "confirm", okText: "Aceptar", cancelText: "Cancelar" });
+  return Boolean(r.ok);
+}
+
+async function appPrompt(message, options) {
+  const r = await showAppModal({
+    title: options?.title || "Eyedrive",
+    message,
+    mode: "prompt",
+    defaultValue: options?.defaultValue || "",
+    placeholder: options?.placeholder || "",
+    okText: options?.okText || "Aceptar",
+    cancelText: options?.cancelText || "Cancelar",
+  });
+  return r.ok ? String(r.value || "") : null;
+}
 
 function applyTheme(theme) {
   const t = theme === "dark" ? "dark" : "light";
@@ -406,16 +492,16 @@ async function askDestinationFolder(movingItems) {
     "",
     "Escribe el número (0 = Mi unidad).",
   ].join("\n");
-  const raw = window.prompt(text);
+  const raw = await appPrompt(text, { title: "Mover elementos" });
   if (raw == null) return { cancelled: true };
   const n = Number.parseInt(raw.trim(), 10);
   if (!Number.isFinite(n) || n < 0 || n >= choices.length) {
-    alert("Opción no válida.");
+    await appAlert("Opción no válida.");
     return { cancelled: true };
   }
   const picked = choices[n];
   if (picked.id !== "ROOT" && blocked.has(picked.id)) {
-    alert("No puedes mover una carpeta dentro de sí misma.");
+    await appAlert("No puedes mover una carpeta dentro de sí misma.");
     return { cancelled: true };
   }
   return { cancelled: false, targetParentId: picked.id === "ROOT" ? null : picked.id };
@@ -429,12 +515,12 @@ async function moveItems(itemIds, targetParentId) {
   });
   if (res.status === 409) {
     const d = await res.json().catch(() => ({}));
-    alert(d.error || "No se puede mover por conflicto.");
+    await appAlert(d.error || "No se puede mover por conflicto.");
     return false;
   }
   if (!res.ok) {
     const d = await res.json().catch(() => ({}));
-    alert(d.error || "No se pudo mover.");
+    await appAlert(d.error || "No se pudo mover.");
     return false;
   }
   return true;
@@ -443,7 +529,7 @@ async function moveItems(itemIds, targetParentId) {
 async function moveSelectedItems() {
   const items = getSelectedMovableItems();
   if (!items.length) {
-    alert("Selecciona al menos un elemento.");
+    await appAlert("Selecciona al menos un elemento.");
     return;
   }
   try {
@@ -455,7 +541,7 @@ async function moveSelectedItems() {
     await loadItems();
   } catch (e) {
     console.error(e);
-    alert("No se pudo mover.");
+    await appAlert("No se pudo mover.");
   }
 }
 
@@ -468,7 +554,7 @@ async function moveSingleItem(item) {
     await loadItems();
   } catch (e) {
     console.error(e);
-    alert("No se pudo mover.");
+    await appAlert("No se pudo mover.");
   }
 }
 
@@ -479,7 +565,7 @@ async function removeItemsByIds(ids) {
     n === 1
       ? "¿Eliminar? Si es una carpeta, se borrará todo su contenido."
       : `¿Eliminar ${n} elementos? Las carpetas borrarán todo su contenido.`;
-  if (!window.confirm(msg)) return;
+  if (!(await appConfirm(msg, "Eliminar selección"))) return;
   let failed = 0;
   for (const id of ids) {
     try {
@@ -491,13 +577,13 @@ async function removeItemsByIds(ids) {
   }
   clearSelectionStateOnly();
   await loadItems();
-  if (failed) alert(`No se pudieron eliminar ${failed} elemento(s).`);
+  if (failed) await appAlert(`No se pudieron eliminar ${failed} elemento(s).`);
 }
 
 function downloadSelectedFileItems() {
   const files = getSelectedFileItems();
   if (!files.length) {
-    alert("En la selección no hay archivos (solo carpetas o nada).");
+    await appAlert("En la selección no hay archivos (solo carpetas o nada).");
     return;
   }
   files.forEach((f, i) => {
@@ -579,7 +665,6 @@ function updateInFolderTools() {
     );
   }
   if (downloadCurrentFolderBtn) downloadCurrentFolderBtn.hidden = !inside;
-  if (contentTableWrap) contentTableWrap.hidden = inside;
   updateShareFolderButton();
 }
 
@@ -642,7 +727,7 @@ async function loadItems() {
     await refreshSidebarFolderTree();
   } catch (e) {
     console.error(e);
-    alert("No se pudo cargar. Comprueba la conexión e inténtalo de nuevo.");
+    await appAlert("No se pudo cargar. Comprueba la conexión e inténtalo de nuevo.");
   }
 }
 
@@ -654,7 +739,7 @@ async function openShareFolder(item) {
       body: JSON.stringify({ folderId: item.id }),
     });
     if (!res.ok) {
-      alert("No se pudo crear el enlace.");
+      await appAlert("No se pudo crear el enlace.");
       return;
     }
     const data = await res.json();
@@ -667,7 +752,7 @@ async function openShareFolder(item) {
     shareDialog.showModal();
   } catch (e) {
     console.error(e);
-    alert("No se pudo crear el enlace.");
+    await appAlert("No se pudo crear el enlace.");
   }
 }
 
@@ -751,10 +836,11 @@ if (folderInput) {
 
 async function createNewFolder() {
   const where = currentPathLabel();
-  const name = window.prompt(
+  const name = await appPrompt(
     pathSegments.length
       ? `Nombre de la subcarpeta (se crea en «${where}»):`
-      : `Nombre de la carpeta (se crea en «${where}»):`
+      : `Nombre de la carpeta (se crea en «${where}»):`,
+    { title: "Nueva carpeta", placeholder: "Escribe un nombre" }
   );
   if (!name || !name.trim()) return;
   const body = { name: name.trim() };
@@ -767,14 +853,14 @@ async function createNewFolder() {
       body: JSON.stringify(body),
     });
     if (res.status === 409) {
-      alert("Ya hay un archivo o carpeta con ese nombre en esta ubicación.");
+      await appAlert("Ya hay un archivo o carpeta con ese nombre en esta ubicación.");
       return;
     }
     if (!res.ok) throw new Error("create folder");
     await loadItems();
   } catch (e) {
     console.error(e);
-    alert("No se pudo crear la carpeta.");
+    await appAlert("No se pudo crear la carpeta.");
   }
 }
 
@@ -926,13 +1012,13 @@ async function uploadFiles(incoming, relativePaths) {
         }
       });
       if (res.status === 413) {
-        alert("Algún archivo supera el tamaño máximo o el servidor rechaza el lote (revisa MAX_FILES en Docker).");
+        await appAlert("Algún archivo supera el tamaño máximo o el servidor rechaza el lote (revisa MAX_FILES en Docker).");
         hideUploadProgress();
         resetDropzoneText();
         return;
       }
       if (res.status === 409) {
-        alert("Conflicto de nombre. Renombra o vacía un poco el destino e inténtalo de nuevo.");
+        await appAlert("Conflicto de nombre. Renombra o vacía un poco el destino e inténtalo de nuevo.");
         hideUploadProgress();
         resetDropzoneText();
         return;
@@ -951,14 +1037,14 @@ async function uploadFiles(incoming, relativePaths) {
     resetDropzoneText();
     if (String(e.message || "").includes("cancelled") || activeUploadController?.cancelled) {
       hideUploadProgress();
-      if (uploaded > 0) alert(`Subida cancelada. Se subieron ${uploaded} de ${total} archivos.`);
+      if (uploaded > 0) await appAlert(`Subida cancelada. Se subieron ${uploaded} de ${total} archivos.`);
       return;
     }
     hideUploadProgress();
     if (uploaded > 0 && uploaded < total) {
-      alert(`Se subieron ${uploaded} de ${total} archivos. El resto falló o canceló.`);
+      await appAlert(`Se subieron ${uploaded} de ${total} archivos. El resto falló o canceló.`);
     } else {
-      alert("Error al subir archivos.");
+      await appAlert("Error al subir archivos.");
     }
   } finally {
     activeUploadController = null;
@@ -1048,7 +1134,7 @@ function currentPathLabel() {
 function openItem(item) {
   if (sharePickMode) {
     if (item.itemType !== "folder") {
-      alert("Solo se pueden compartir carpetas. Toca una carpeta o pulsa Esc para salir.");
+      await appAlert("Solo se pueden compartir carpetas. Toca una carpeta o pulsa Esc para salir.");
       return;
     }
     openShareFolder(item);
@@ -1071,7 +1157,7 @@ function showItemInfo(item) {
     ? `Carpeta: ${item.name}`
     : `Archivo: ${item.name} (${formatSize(item.size)})`;
   const lines = [line1, `Añadido: ${formatDate(item.addedAt)}`, `Id: ${item.id}`];
-  alert(lines.join("\n"));
+  await appAlert(lines.join("\n"), "Atajos");
 }
 
 function openFileDownloadNewTab(item) {
@@ -1461,24 +1547,23 @@ if (themeToggleBtn) {
 }
 
 async function removeItem(id) {
-  if (!window.confirm("¿Eliminar? Si es una carpeta, se borrará todo su contenido.")) return;
+  if (!(await appConfirm("¿Eliminar? Si es una carpeta, se borrará todo su contenido.", "Eliminar"))) return;
   try {
     const res = await fetch(`/api/items/${id}`, { method: "DELETE" });
     if (res.status === 404) {
-      alert("No encontrado.");
+      await appAlert("No encontrado.");
       return;
     }
     if (!res.ok) throw new Error("delete");
     await loadItems();
   } catch (e) {
     console.error(e);
-    alert("Error al eliminar.");
+    await appAlert("Error al eliminar.");
   }
 }
 
 function renderItems(list) {
   fileGrid.innerHTML = "";
-  if (contentTableBody) contentTableBody.innerHTML = "";
 
   for (const item of list) {
     const isFolder = item.itemType === "folder";
@@ -1495,7 +1580,7 @@ function renderItems(list) {
       node.classList.add("folder");
     }
     if (window.EyeIcons) {
-      window.EyeIcons.setFileIcon(icon, isFolder ? "folder" : "file");
+      window.EyeIcons.setFileIcon(icon, isFolder ? "folder" : "file", item.name || "");
     }
 
     const delBtn = node.querySelector(".delete-btn");
@@ -1551,59 +1636,11 @@ function renderItems(list) {
     });
     fileGrid.appendChild(node);
 
-    if (contentTableBody && !pathSegments.length) {
-      const tr = document.createElement("tr");
-
-      const tdName = document.createElement("td");
-      tdName.textContent = item.name;
-      tr.appendChild(tdName);
-
-      const tdType = document.createElement("td");
-      tdType.textContent = isFolder ? "Carpeta" : "Archivo";
-      tr.appendChild(tdType);
-
-      const tdSize = document.createElement("td");
-      tdSize.textContent = isFolder ? "—" : formatSize(item.size);
-      tr.appendChild(tdSize);
-
-      const tdDate = document.createElement("td");
-      tdDate.textContent = formatDate(item.addedAt);
-      tr.appendChild(tdDate);
-
-      const tdActions = document.createElement("td");
-      tdActions.className = "content-table-actions";
-
-      const openBtn = document.createElement("button");
-      openBtn.type = "button";
-      openBtn.className = "icon-btn";
-      openBtn.title = isFolder ? "Abrir carpeta" : "Descargar archivo";
-      openBtn.setAttribute("aria-label", openBtn.title);
-      if (window.EyeIcons) {
-        openBtn.innerHTML = `<span class="icon-btn-ic">${isFolder ? window.EyeIcons.folder() : window.EyeIcons.download()}</span>`;
-      }
-      openBtn.addEventListener("click", () => openItem(item));
-
-      const deleteBtn = document.createElement("button");
-      deleteBtn.type = "button";
-      deleteBtn.className = "icon-btn delete-btn";
-      deleteBtn.title = "Eliminar";
-      deleteBtn.setAttribute("aria-label", "Eliminar");
-      if (window.EyeIcons) deleteBtn.innerHTML = `<span class="icon-btn-ic">${window.EyeIcons.trash()}</span>`;
-      deleteBtn.addEventListener("click", () => removeItem(item.id));
-
-      tdActions.appendChild(openBtn);
-      tdActions.appendChild(deleteBtn);
-      tr.appendChild(tdActions);
-      contentTableBody.appendChild(tr);
-    }
   }
 
   const hasCards = fileGrid.children.length > 0;
   emptyState.hidden = hasCards;
   emptyState.style.display = hasCards ? "none" : "flex";
-  if (contentTableWrap && !pathSegments.length) {
-    contentTableWrap.hidden = !hasCards;
-  }
 }
 
 function formatSize(bytes) {

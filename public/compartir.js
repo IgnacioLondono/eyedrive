@@ -222,7 +222,7 @@ async function loadList() {
       node.classList.add("folder");
     }
     if (window.EyeIcons) {
-      window.EyeIcons.setFileIcon(icon, isFolder ? "folder" : "file");
+      window.EyeIcons.setFileIcon(icon, isFolder ? "folder" : "file", item.name || "");
     }
     const go = () => {
       if (isFolder) {

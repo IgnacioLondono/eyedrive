@@ -187,14 +187,14 @@ body::after {
 }
 
 .tree-guide--line {
-  border-left-color: var(--glass-stroke);
+  border-left-color: color-mix(in srgb, var(--text) 42%, transparent);
 }
 
 .tree-elbow {
   width: 0.8rem;
   height: 1.35rem;
-  border-left: 1px solid var(--glass-stroke);
-  border-bottom: 1px solid var(--glass-stroke);
+  border-left: 1px solid color-mix(in srgb, var(--text) 42%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 42%, transparent);
   border-bottom-left-radius: 6px;
   transform: translateY(-0.08rem);
 }
@@ -246,6 +246,15 @@ body::after {
   background: color-mix(in srgb, var(--panel) 68%, var(--text) 32%);
   color: var(--text);
   font-weight: 700;
+}
+
+html[data-theme="dark"] .tree-guide--line {
+  border-left-color: rgba(255, 255, 255, 0.55);
+}
+
+html[data-theme="dark"] .tree-elbow {
+  border-left-color: rgba(255, 255, 255, 0.55);
+  border-bottom-color: rgba(255, 255, 255, 0.55);
 }
 
 .side-link {
@@ -611,7 +620,8 @@ body::after {
 }
 
 .file-icon--file {
-  background: linear-gradient(140deg, #ede8ff 0%, #d8d0fa 100%);
+  background: var(--panel-deep);
+  border: 1px solid var(--glass-stroke);
 }
 
 .file-icon--folder .icon-svg {
@@ -621,7 +631,7 @@ body::after {
 }
 
 .file-icon--file .icon-svg {
-  color: #3d2a8a;
+  color: var(--text);
   width: 1.4rem;
   height: 1.4rem;
 }
@@ -2058,51 +2068,6 @@ html[data-theme="dark"] .file-card .icon-btn.delete-btn .icon-svg {
   height: 1.02rem;
 }
 
-/* Tabla de contenido en Mi unidad */
-.content-table-wrap {
-  margin-top: 0.65rem;
-  border: 1px solid var(--glass-stroke);
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--panel);
-}
-
-.content-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.content-table thead th {
-  text-align: left;
-  font-size: 0.83rem;
-  padding: 0.62rem 0.78rem;
-  color: var(--muted);
-  border-bottom: 1px solid var(--glass-stroke);
-  font-weight: 700;
-}
-
-.content-table tbody td {
-  padding: 0.62rem 0.78rem;
-  border-bottom: 1px solid var(--glass-stroke);
-  color: var(--text);
-  font-size: 0.9rem;
-}
-
-.content-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.content-table-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.content-table-actions .icon-btn {
-  width: 2rem;
-  height: 2rem;
-  min-width: 2rem;
-}
 
 /* Progreso de subida */
 .upload-progress {
@@ -2157,6 +2122,59 @@ html[data-theme="dark"] .upload-progress__fill {
   border-radius: 10px !important;
 }
 
+/* Modal general (alert/confirm/prompt) */
+.app-modal {
+  width: min(28rem, 94vw);
+  border: 1px solid var(--glass-stroke);
+  border-radius: 14px;
+  padding: 1rem 1.05rem;
+  background: var(--panel);
+  color: var(--text);
+}
+
+.app-modal::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(1.5px);
+}
+
+.app-modal-head {
+  margin-bottom: 0.4rem;
+}
+
+.app-modal-title {
+  margin: 0;
+  font-size: 1.04rem;
+  font-weight: 800;
+}
+
+.app-modal-text {
+  margin: 0 0 0.7rem;
+  color: var(--text-soft);
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.app-modal-input {
+  width: 100%;
+  border: 1px solid var(--glass-stroke);
+  background: var(--panel-deep);
+  color: var(--text);
+  border-radius: 9px;
+  padding: 0.58rem 0.7rem;
+  margin-bottom: 0.75rem;
+  outline: none;
+}
+
+.app-modal-input:focus {
+  border-color: color-mix(in srgb, var(--text) 45%, transparent);
+}
+
+.app-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
 /* Selección más visible (principal y compartidos) */
 .file-card--selected,
 .file-card[aria-selected="true"] {
@@ -2204,4 +2222,28 @@ html[data-theme="dark"] .file-card[aria-selected="true"] {
 .breadcrumb .crumb:hover,
 .share-breadcrumb .crumb:hover {
   background: var(--panel-deep) !important;
+}
+
+/* Sidebar: logo solo icono, sin fondo */
+.brand-icon {
+  width: auto !important;
+  height: auto !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.brand-icon .icon-svg {
+  width: 1.45rem !important;
+  height: 1.45rem !important;
+}
+
+/* Mi unidad sin selección morada */
+.side-link.active,
+.side-link:hover {
+  color: var(--text) !important;
+  background: var(--panel) !important;
+  box-shadow: inset 0 0 0 1px var(--glass-stroke) !important;
 }

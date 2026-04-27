@@ -21,6 +21,38 @@
       ico(
         '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/>'
       ),
+    fileImage: () =>
+      ico(
+        '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/><circle cx="9" cy="11" r="1.2"/><path d="m7.2 18 3.1-3.2 2.1 2.2 2.7-2.7 1.7 1.7"/>'
+      ),
+    fileArchive: () =>
+      ico(
+        '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/><path d="M10.2 9h3.6"/><path d="M10.2 12h3.6"/><path d="M10.2 15h3.6"/><path d="M10.2 18h3.6"/>'
+      ),
+    fileCode: () =>
+      ico(
+        '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/><path d="m9.2 12-2.2 2.2 2.2 2.2"/><path d="m14.8 12 2.2 2.2-2.2 2.2"/><path d="m12.9 10.5-1.8 7"/>'
+      ),
+    filePdf: () =>
+      ico(
+        '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/><path d="M8.5 17.5v-5h1.9a1.2 1.2 0 1 1 0 2.4H8.5"/><path d="M12.2 17.5v-5h1.3a2 2 0 0 1 0 4h-1.3"/><path d="M16.3 17.5v-5h2.7"/><path d="M16.3 15.2h2.1"/>'
+      ),
+    fileAudio: () =>
+      ico(
+        '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/><path d="M14.5 11v5.2a1.5 1.5 0 1 1-1-1.4V10l4-.8v4.8a1.5 1.5 0 1 1-1-1.4"/>'
+      ),
+    fileVideo: () =>
+      ico(
+        '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/><rect x="7.8" y="11.2" width="8.4" height="5.6" rx="1.1"/><path d="m11.3 12.5 2.7 1.5-2.7 1.5z"/>'
+      ),
+    fileJava: () =>
+      ico(
+        '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/><path d="M9.2 17h5.6"/><path d="M10.1 14.5h3.8"/><path d="M11 9.5c.5.4.3.9 0 1.2-.4.4-.4.8.1 1.2"/><path d="M13 9c.7.5.5 1.2.1 1.6-.4.4-.5.9.1 1.4"/>'
+      ),
+    fileText: () =>
+      ico(
+        '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/><path d="M8.5 11.5h7"/><path d="M8.5 14.5h7"/><path d="M8.5 17.5h4.5"/>'
+      ),
     /** Logo / marca: ojo (eyed) */
     eye: () =>
       ico(
@@ -85,15 +117,34 @@
         24,
         24
       ),
-    setFileIcon: function (el, type) {
+    setFileIcon: function (el, type, fileName) {
       if (!el) return;
       el.classList.remove("file-icon--folder", "file-icon--file");
       if (type === "folder") {
         el.classList.add("file-icon--folder");
         el.innerHTML = window.EyeIcons.folder();
       } else {
+        const ext = String(fileName || "")
+          .trim()
+          .toLowerCase()
+          .split(".")
+          .pop();
+        const imageExt = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "avif"]);
+        const archiveExt = new Set(["zip", "rar", "7z", "tar", "gz", "bz2", "xz", "iso"]);
+        const codeExt = new Set(["js", "ts", "jsx", "tsx", "json", "html", "css", "md", "py", "php", "go", "rs", "c", "cpp", "h", "java", "kt", "sql", "sh", "yml", "yaml"]);
+        const audioExt = new Set(["mp3", "wav", "flac", "ogg", "m4a", "aac"]);
+        const videoExt = new Set(["mp4", "mkv", "avi", "mov", "webm", "m4v"]);
+        let iconFn = window.EyeIcons.file;
+        if (ext === "jar") iconFn = window.EyeIcons.fileJava;
+        else if (ext === "pdf") iconFn = window.EyeIcons.filePdf;
+        else if (imageExt.has(ext)) iconFn = window.EyeIcons.fileImage;
+        else if (archiveExt.has(ext)) iconFn = window.EyeIcons.fileArchive;
+        else if (audioExt.has(ext)) iconFn = window.EyeIcons.fileAudio;
+        else if (videoExt.has(ext)) iconFn = window.EyeIcons.fileVideo;
+        else if (codeExt.has(ext)) iconFn = window.EyeIcons.fileCode;
+        else if (ext) iconFn = window.EyeIcons.fileText;
         el.classList.add("file-icon--file");
-        el.innerHTML = window.EyeIcons.file();
+        el.innerHTML = iconFn();
       }
     },
   };

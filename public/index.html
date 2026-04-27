@@ -145,20 +145,6 @@
             </div>
           </div>
           <div id="fileGrid" class="file-grid" role="listbox" aria-multiselectable="true" aria-label="Archivos y carpetas"></div>
-          <div id="contentTableWrap" class="content-table-wrap">
-            <table class="content-table" aria-label="Tabla de contenido de Mi unidad">
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Tipo</th>
-                  <th>Tamaño</th>
-                  <th>Fecha</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="contentTableBody"></tbody>
-            </table>
-          </div>
           <p id="emptyState" class="empty-state">
             <span class="empty-illu" id="icEmpty" aria-hidden="true"></span>
             No hay nada en esta carpeta. Sube archivos o crea una carpeta.
@@ -187,6 +173,18 @@
           <span class="btn-text">Enviar por correo</span>
         </button>
         <button id="shareCloseBtn" class="btn-ghost" type="button">Cerrar</button>
+      </div>
+    </dialog>
+
+    <dialog id="appModal" class="app-modal">
+      <div class="app-modal-head">
+        <h2 id="appModalTitle" class="app-modal-title">Eyedrive</h2>
+      </div>
+      <p id="appModalMessage" class="app-modal-text"></p>
+      <input id="appModalInput" class="app-modal-input" type="text" hidden />
+      <div class="app-modal-actions">
+        <button id="appModalCancelBtn" class="btn-secondary" type="button">Cancelar</button>
+        <button id="appModalOkBtn" class="btn-primary" type="button">Aceptar</button>
       </div>
     </dialog>
 
