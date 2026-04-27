@@ -1635,20 +1635,35 @@ html[data-theme="dark"] .sidebar {
 
 .brand-icon,
 .share-hero-ic {
-  background: rgba(11, 87, 208, 0.08) !important;
-  border: 1px solid rgba(11, 87, 208, 0.16);
+  background: linear-gradient(120deg, rgba(109, 91, 253, 0.48), rgba(28, 156, 255, 0.5), rgba(109, 91, 253, 0.48)) !important;
+  background-size: 220% 220% !important;
+  border: 1px solid rgba(88, 102, 241, 0.42);
   box-shadow: none !important;
+  animation: eye-bg-flow 4.2s ease-in-out infinite;
 }
 
 .brand-icon .icon-svg,
 .share-hero-ic .icon-svg {
-  color: #0b57d0 !important;
-  filter: none !important;
+  color: #eef3ff !important;
+  filter: drop-shadow(0 0 6px rgba(28, 156, 255, 0.3)) !important;
+  animation: eye-flow 4s ease-in-out infinite;
 }
 
 html[data-theme="dark"] .brand-icon .icon-svg,
 html[data-theme="dark"] .share-hero-ic .icon-svg {
-  color: #60a5fa !important;
+  color: #f4f7ff !important;
+}
+
+@keyframes eye-bg-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 .file-card,
@@ -1685,51 +1700,46 @@ html[data-theme="dark"] .share-readonly:hover {
   letter-spacing: 0 !important;
 }
 
-.btn-primary {
-  background: #111827 !important;
-  border: 1px solid #111827 !important;
+.btn-primary,
+.btn-secondary,
+.btn-ghost,
+.theme-toggle-btn,
+.share-actions .btn-secondary,
+.share-actions .btn-primary {
+  background: #101317 !important;
+  border: 1px solid #101317 !important;
   color: #ffffff !important;
 }
 
-.btn-primary:hover {
-  background: #0f172a !important;
-  border-color: #0f172a !important;
-}
-
-.btn-secondary,
-.share-actions .btn-secondary {
-  background: #ffffff !important;
-  border: 1px solid rgba(16, 19, 23, 0.16) !important;
-  color: #111827 !important;
-}
-
+.btn-primary:hover,
 .btn-secondary:hover,
-.share-actions .btn-secondary:hover {
-  background: #f8fafc !important;
+.btn-ghost:hover,
+.theme-toggle-btn:hover,
+.share-actions .btn-secondary:hover,
+.share-actions .btn-primary:hover {
+  background: #1a1f27 !important;
+  border-color: #1a1f27 !important;
 }
 
-.btn-ghost {
-  background: transparent !important;
-  border: 1px solid rgba(16, 19, 23, 0.14) !important;
-  color: var(--text) !important;
-}
-
-html[data-theme="dark"] .btn-primary {
-  background: #60a5fa !important;
-  border-color: #60a5fa !important;
-  color: #0b1220 !important;
-}
-
+html[data-theme="dark"] .btn-primary,
 html[data-theme="dark"] .btn-secondary,
-html[data-theme="dark"] .share-actions .btn-secondary {
-  background: #1a2130 !important;
-  border-color: rgba(255, 255, 255, 0.16) !important;
-  color: #eaf0fa !important;
+html[data-theme="dark"] .btn-ghost,
+html[data-theme="dark"] .theme-toggle-btn,
+html[data-theme="dark"] .share-actions .btn-secondary,
+html[data-theme="dark"] .share-actions .btn-primary {
+  background: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #101317 !important;
 }
 
+html[data-theme="dark"] .btn-primary:hover,
 html[data-theme="dark"] .btn-secondary:hover,
-html[data-theme="dark"] .share-actions .btn-secondary:hover {
-  background: #1f2a3d !important;
+html[data-theme="dark"] .btn-ghost:hover,
+html[data-theme="dark"] .theme-toggle-btn:hover,
+html[data-theme="dark"] .share-actions .btn-secondary:hover,
+html[data-theme="dark"] .share-actions .btn-primary:hover {
+  background: #f2f4f8 !important;
+  border-color: #f2f4f8 !important;
 }
 
 .search-wrap,
@@ -1740,7 +1750,7 @@ html[data-theme="dark"] .share-actions .btn-secondary:hover {
 
 .search-ic,
 .share-search-wrap .search-ic {
-  color: #4b5563 !important;
+  color: #101317 !important;
 }
 
 #searchInput,
@@ -1768,4 +1778,24 @@ html[data-theme="dark"] #shareSearchInput {
 html[data-theme="dark"] #searchInput::placeholder,
 html[data-theme="dark"] #shareSearchInput::placeholder {
   color: #9aa7be !important;
+}
+
+/* Iconos: negro en claro, blanco en oscuro (excepto el ojo) */
+.icon-svg {
+  color: #101317 !important;
+}
+
+html[data-theme="dark"] .icon-svg {
+  color: #ffffff !important;
+}
+
+.brand-icon .icon-svg,
+.share-hero-ic .icon-svg {
+  color: #6d5bfd !important;
+  animation: eye-flow 4s ease-in-out infinite !important;
+}
+
+html[data-theme="dark"] .brand-icon .icon-svg,
+html[data-theme="dark"] .share-hero-ic .icon-svg {
+  color: #60a5fa !important;
 }

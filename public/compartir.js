@@ -267,7 +267,9 @@ async function loadList() {
     });
     shareGrid.appendChild(node);
   }
-  shareEmpty.hidden = visible.length > 0;
+  const hasCards = shareGrid.children.length > 0;
+  shareEmpty.hidden = hasCards;
+  shareEmpty.style.display = hasCards ? "none" : "flex";
 }
 
 async function init() {
