@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Carpeta compartida — eyedcomundrive</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,500;0,9..40,700;0,9..40,800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="share-only">
+    <div class="app share-app">
+      <main class="content share-content">
+        <header class="share-hero">
+          <span class="share-hero-ic" id="shareBrandIcon" aria-hidden="true"></span>
+          <h1 class="share-title">eyedcomundrive</h1>
+          <p class="share-sub">Vista compartida · solo lectura</p>
+        </header>
+        <nav id="shareBreadcrumb" class="breadcrumb share-breadcrumb" aria-label="Ruta"></nav>
+        <p id="shareError" class="share-error" role="alert" hidden></p>
+        <div id="shareGrid" class="file-grid share-grid"></div>
+        <p id="shareEmpty" class="empty-state share-empty" hidden>
+          <span class="empty-illu empty-illu--sm" id="shareEmptyIcon" aria-hidden="true"></span>
+          <span>Esta carpeta está vacía.</span>
+        </p>
+      </main>
+    </div>
+    <template id="shareCardTemplate">
+      <article class="file-card share-readonly" tabindex="0">
+        <div class="file-icon" aria-hidden="true"></div>
+        <div class="file-meta">
+          <p class="file-name"></p>
+          <small class="file-info"></small>
+        </div>
+      </article>
+    </template>
+    <script>
+      window.__SHARE_TOKEN__ = (location.pathname.split("/").pop() || "").trim();
+    </script>
+    <script src="icons.js"></script>
+    <script src="compartir.js"></script>
+  </body>
+</html>

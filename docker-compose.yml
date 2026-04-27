@@ -1,0 +1,53 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: eyedcomundrive-db
+    environment:
+      POSTGRES_USER: eyed
+      POSTGRES_PASSWORD: eyedpass
+      POSTGRES_DB: eyed
+    volumes:
+      - eyed_pgdb:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eyed -d eyed"]
+      interval: 3s
+      timeout: 5s
+      retries: 12
+      start_period: 8s
+    restart: unless-stopped
+
+  app:
+    build: .
+    image: eyedcomundrive:local
+    container_name: eyedcomundrive
+    restart: unless-stopped
+    ports:
+      - "9990:3000"
+    environment:
+      DATABASE_URL: postgresql://eyed:eyedpass@db:5432/eyed
+      UPLOAD_DIR: /app/data/uploads
+      PORT: "3000"
+      MAX_FILE_BYTES: "8589934592"
+      MAX_FILES_PER_REQUEST: "3000"
+    volumes:
+      - eyed_files:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3000/api/health',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+
+volumes:
+  eyed_pgdb:
+  eyed_files:
+  

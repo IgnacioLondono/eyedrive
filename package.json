@@ -1,0 +1,19 @@
+{
+  "name": "eyedcomundrive",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Nube personal con API y PostgreSQL",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.13.1"
+  }
+}

@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>eyedcomundrive</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-icon" id="brandIcon" aria-hidden="true"></span>
+          <h1>eyedcomundrive</h1>
+        </div>
+        <div class="actions">
+          <button id="uploadBtn" class="btn-primary btn-ic" type="button">
+            <span class="btn-icon" id="icUpload" aria-hidden="true"></span>
+            <span class="btn-text">Subir archivos</span>
+          </button>
+          <button id="newFolderBtn" class="btn-secondary btn-ic" type="button">
+            <span class="btn-icon" id="icNewFolder" aria-hidden="true"></span>
+            <span class="btn-text">Nueva carpeta</span>
+          </button>
+          <button id="folderTreeBtn" class="btn-secondary btn-ic" type="button" title="Sube una carpeta con todo su contenido">
+            <span class="btn-icon" id="icFolderTree" aria-hidden="true"></span>
+            <span class="btn-text">Subir carpeta</span>
+          </button>
+        </div>
+        <input id="fileInput" type="file" multiple hidden />
+        <input id="folderInput" type="file" hidden multiple webkitdirectory mozdirectory />
+
+        <nav class="side-nav">
+          <a class="side-link active" href="#" id="navDrive">
+            <span class="side-link-ic" id="icNavDrive" aria-hidden="true"></span>
+            <span>Mi unidad</span>
+          </a>
+        </nav>
+      </aside>
+
+      <main class="content">
+        <header class="topbar">
+          <div class="search-wrap">
+            <span class="search-ic" id="icSearch" aria-hidden="true"></span>
+            <input
+              id="searchInput"
+              type="search"
+              placeholder="Buscar en esta carpeta…"
+              autocomplete="off"
+            />
+          </div>
+          <div class="stats">
+            <span id="fileCount" class="file-count-pill">0 elementos</span>
+            <button id="refreshBtn" class="btn-secondary btn-ic" type="button">
+              <span class="btn-icon" id="icRefresh" aria-hidden="true"></span>
+              <span class="btn-text">Actualizar</span>
+            </button>
+          </div>
+        </header>
+
+        <nav id="breadcrumb" class="breadcrumb" aria-label="Ruta"></nav>
+
+        <section id="dropzone" class="dropzone" tabindex="0">
+          <div class="dropzone-icon" id="icDropzone" aria-hidden="true"></div>
+          <div class="dropzone-text">
+            <strong>Suelta archivos aquí</strong>
+            <span>ZIP, RAR, JAR, EXE, MSI, ISO u carpetas (arrastre o «Subir carpeta»)</span>
+          </div>
+        </section>
+
+        <section>
+          <h2 class="content-heading">
+            <span class="content-heading-ic" id="icContentHead" aria-hidden="true"></span>
+            Contenido
+          </h2>
+          <div id="fileGrid" class="file-grid"></div>
+          <p id="emptyState" class="empty-state">
+            <span class="empty-illu" id="icEmpty" aria-hidden="true"></span>
+            No hay nada en esta carpeta. Sube archivos o crea una carpeta.
+          </p>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="shareDialog" class="share-dialog">
+      <div class="share-dialog-head">
+        <span class="share-dialog-ic" id="icDialogShare" aria-hidden="true"></span>
+        <h2 class="share-dialog-title">Compartir carpetas</h2>
+      </div>
+      <p class="share-dialog-text">
+        Solo quien tenga el enlace podrá ver esta carpeta y su contenido. No ve el resto de tu unidad.
+      </p>
+      <input id="shareUrlInput" class="share-url-input" type="text" readonly value="" />
+      <div class="share-dialog-actions">
+        <button id="shareCopyBtn" class="btn-primary btn-ic" type="button">
+          <span class="btn-icon" id="icCopy" aria-hidden="true"></span>
+          <span class="btn-text">Copiar enlace</span>
+        </button>
+        <button id="shareEmailBtn" class="btn-secondary btn-ic" type="button">
+          <span class="btn-icon" id="icMail" aria-hidden="true"></span>
+          <span class="btn-text">Enviar por correo</span>
+        </button>
+        <button id="shareCloseBtn" class="btn-ghost" type="button">Cerrar</button>
+      </div>
+    </dialog>
+
+    <template id="fileCardTemplate">
+      <article class="file-card" tabindex="0">
+        <div class="file-icon" aria-hidden="true"></div>
+        <div class="file-meta">
+          <p class="file-name"></p>
+          <small class="file-info"></small>
+        </div>
+        <div class="card-actions">
+          <button class="icon-btn share-link-btn" type="button" title="Generar enlace" hidden>
+            <span class="icon-btn-ic" data-role="ic"></span>
+            <span class="visually-hidden">Compartir</span>
+          </button>
+          <button class="icon-btn delete-btn" type="button" title="Eliminar">
+            <span class="icon-btn-ic" data-role="ic"></span>
+            <span class="visually-hidden">Eliminar</span>
+          </button>
+        </div>
+      </article>
+    </template>
+
+    <script src="icons.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
