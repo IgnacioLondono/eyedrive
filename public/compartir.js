@@ -30,8 +30,11 @@ function applyTheme(theme) {
   const t = theme === "dark" ? "dark" : "light";
   document.documentElement.setAttribute("data-theme", t);
   if (shareThemeToggleBtn) {
-    const txt = shareThemeToggleBtn.querySelector(".btn-text");
-    if (txt) txt.textContent = t === "dark" ? "Modo claro" : "Modo oscuro";
+    const title = t === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro";
+    shareThemeToggleBtn.title = title;
+    shareThemeToggleBtn.setAttribute("aria-label", title);
+    const ic = document.getElementById("icShareThemeToggle");
+    if (ic && window.EyeIcons) ic.innerHTML = t === "dark" ? window.EyeIcons.sun() : window.EyeIcons.moon();
   }
 }
 
@@ -296,6 +299,8 @@ async function init() {
     if (e) e.innerHTML = window.EyeIcons.folder();
     const s = document.getElementById("shareSearchIcon");
     if (s) s.innerHTML = window.EyeIcons.search();
+    const t = document.getElementById("icShareThemeToggle");
+    if (t) t.innerHTML = window.EyeIcons.moon();
   }
   await loadList();
 }

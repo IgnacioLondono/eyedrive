@@ -5,6 +5,8 @@ const fileInput = document.getElementById("fileInput");
 const folderInput = document.getElementById("folderInput");
 const searchInput = document.getElementById("searchInput");
 const fileGrid = document.getElementById("fileGrid");
+const contentTableWrap = document.getElementById("contentTableWrap");
+const contentTableBody = document.getElementById("contentTableBody");
 const fileCount = document.getElementById("fileCount");
 const emptyState = document.getElementById("emptyState");
 const refreshBtn = document.getElementById("refreshBtn");
@@ -37,8 +39,11 @@ function applyTheme(theme) {
   const t = theme === "dark" ? "dark" : "light";
   document.documentElement.setAttribute("data-theme", t);
   if (themeToggleBtn) {
-    const txt = themeToggleBtn.querySelector(".btn-text");
-    if (txt) txt.textContent = t === "dark" ? "Modo claro" : "Modo oscuro";
+    const title = t === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro";
+    themeToggleBtn.title = title;
+    themeToggleBtn.setAttribute("aria-label", title);
+    const ic = document.getElementById("icThemeToggle");
+    if (ic && window.EyeIcons) ic.innerHTML = t === "dark" ? window.EyeIcons.sun() : window.EyeIcons.moon();
   }
 }
 
@@ -71,6 +76,7 @@ function initDecorIcons() {
   fill("icDialogShare", () => I.share());
   fill("icCopy", () => I.copy());
   fill("icMail", () => I.mail());
+  fill("icThemeToggle", () => I.moon());
 }
 
 const NAV_STATE_KEY = "eyedrive.nav.pathSegments.v1";
@@ -410,14 +416,17 @@ function updateShareFolderButton() {
   if (inside) {
     if (labelEl) labelEl.textContent = "Compartir esta carpeta";
     shareCurrentFolderBtn.title = "Generar enlace para la carpeta en la que estás";
+    shareCurrentFolderBtn.setAttribute("aria-label", "Compartir esta carpeta");
     shareCurrentFolderBtn.setAttribute("aria-pressed", "false");
   } else if (sharePickMode) {
     if (labelEl) labelEl.textContent = "Cancelar";
     shareCurrentFolderBtn.title = "Salir del modo de elegir carpeta";
+    shareCurrentFolderBtn.setAttribute("aria-label", "Cancelar modo compartir");
     shareCurrentFolderBtn.setAttribute("aria-pressed", "true");
   } else {
     if (labelEl) labelEl.textContent = "Compartir carpeta";
     shareCurrentFolderBtn.title = "Elegir una carpeta y generar un enlace de compartir";
+    shareCurrentFolderBtn.setAttribute("aria-label", "Compartir carpeta");
     shareCurrentFolderBtn.setAttribute("aria-pressed", "false");
   }
 }
@@ -435,6 +444,7 @@ function updateInFolderTools() {
     );
   }
   if (downloadCurrentFolderBtn) downloadCurrentFolderBtn.hidden = !inside;
+  if (contentTableWrap) contentTableWrap.hidden = inside;
   updateShareFolderButton();
 }
 
@@ -1256,6 +1266,7 @@ async function removeItem(id) {
 
 function renderItems(list) {
   fileGrid.innerHTML = "";
+  if (contentTableBody) contentTableBody.innerHTML = "";
 
   for (const item of list) {
     const isFolder = item.itemType === "folder";
@@ -1327,9 +1338,58 @@ function renderItems(list) {
       removeItem(item.id);
     });
     fileGrid.appendChild(node);
+
+    if (contentTableBody && !pathSegments.length) {
+      const tr = document.createElement("tr");
+
+      const tdName = document.createElement("td");
+      tdName.textContent = item.name;
+      tr.appendChild(tdName);
+
+      const tdType = document.createElement("td");
+      tdType.textContent = isFolder ? "Carpeta" : "Archivo";
+      tr.appendChild(tdType);
+
+      const tdSize = document.createElement("td");
+      tdSize.textContent = isFolder ? "—" : formatSize(item.size);
+      tr.appendChild(tdSize);
+
+      const tdDate = document.createElement("td");
+      tdDate.textContent = formatDate(item.addedAt);
+      tr.appendChild(tdDate);
+
+      const tdActions = document.createElement("td");
+      tdActions.className = "content-table-actions";
+
+      const openBtn = document.createElement("button");
+      openBtn.type = "button";
+      openBtn.className = "icon-btn";
+      openBtn.title = isFolder ? "Abrir carpeta" : "Descargar archivo";
+      openBtn.setAttribute("aria-label", openBtn.title);
+      if (window.EyeIcons) {
+        openBtn.innerHTML = `<span class="icon-btn-ic">${isFolder ? window.EyeIcons.folder() : window.EyeIcons.download()}</span>`;
+      }
+      openBtn.addEventListener("click", () => openItem(item));
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "icon-btn delete-btn";
+      deleteBtn.title = "Eliminar";
+      deleteBtn.setAttribute("aria-label", "Eliminar");
+      if (window.EyeIcons) deleteBtn.innerHTML = `<span class="icon-btn-ic">${window.EyeIcons.trash()}</span>`;
+      deleteBtn.addEventListener("click", () => removeItem(item.id));
+
+      tdActions.appendChild(openBtn);
+      tdActions.appendChild(deleteBtn);
+      tr.appendChild(tdActions);
+      contentTableBody.appendChild(tr);
+    }
   }
 
   emptyState.hidden = list.length > 0;
+  if (contentTableWrap && !pathSegments.length) {
+    contentTableWrap.hidden = list.length === 0;
+  }
 }
 
 function formatSize(bytes) {
