@@ -29,6 +29,9 @@ const appModal = document.getElementById("appModal");
 const appModalTitle = document.getElementById("appModalTitle");
 const appModalMessage = document.getElementById("appModalMessage");
 const appModalInput = document.getElementById("appModalInput");
+const appModalSelectSearch = document.getElementById("appModalSelectSearch");
+const appModalSelect = document.getElementById("appModalSelect");
+const appModalSelectPreview = document.getElementById("appModalSelectPreview");
 const appModalCancelBtn = document.getElementById("appModalCancelBtn");
 const appModalOkBtn = document.getElementById("appModalOkBtn");
 const pickFilesBtn = document.getElementById("pickFilesBtn");
@@ -48,10 +51,31 @@ let lastShare = { url: "", name: "" };
 /** ids de carpetas expandidas en el árbol lateral */
 const expandedFolderIds = new Set();
 
-function showAppModal({ title, message, mode, defaultValue, okText, cancelText, placeholder }) {
+function showAppModal({
+  title,
+  message,
+  mode,
+  defaultValue,
+  okText,
+  cancelText,
+  placeholder,
+  selectOptions,
+  selectedValue,
+}) {
   return new Promise((resolve) => {
-    if (!appModal || !appModalTitle || !appModalMessage || !appModalOkBtn || !appModalCancelBtn || !appModalInput) {
+    if (
+      !appModal ||
+      !appModalTitle ||
+      !appModalMessage ||
+      !appModalOkBtn ||
+      !appModalCancelBtn ||
+      !appModalInput ||
+      !appModalSelect ||
+      !appModalSelectSearch ||
+      !appModalSelectPreview
+    ) {
       if (mode === "prompt") resolve({ ok: true, value: defaultValue || "" });
+      else if (mode === "select") resolve({ ok: true, value: null });
       else if (mode === "confirm") resolve({ ok: true });
       else resolve({ ok: true });
       return;
@@ -71,6 +95,72 @@ function showAppModal({ title, message, mode, defaultValue, okText, cancelText, 
       appModalInput.value = "";
       appModalInput.placeholder = "";
     }
+    appModalSelect.hidden = true;
+    appModalSelect.innerHTML = "";
+    appModalSelectSearch.hidden = true;
+    appModalSelectSearch.value = "";
+    appModalSelectPreview.hidden = true;
+    appModalSelectPreview.textContent = "";
+    appModalOkBtn.disabled = false;
+    let onSelectSearchInput = null;
+    let onSelectChange = null;
+    if (mode === "select") {
+      const safeOptions = Array.isArray(selectOptions) ? selectOptions : [];
+      const safeSelectedValue = typeof selectedValue === "string" ? selectedValue : "";
+      let rememberedValue = safeSelectedValue || "";
+      const renderSelectOptions = () => {
+        const query = appModalSelectSearch.value.trim().toLocaleLowerCase("es");
+        const filtered =
+          !query
+            ? safeOptions
+            : safeOptions.filter((opt) => String(opt.searchText || opt.label || "").toLocaleLowerCase("es").includes(query));
+        appModalSelect.innerHTML = "";
+        for (const opt of filtered) {
+          const optionEl = document.createElement("option");
+          optionEl.value = String(opt.value ?? "");
+          optionEl.textContent = String(opt.label ?? "");
+          optionEl.disabled = Boolean(opt.disabled);
+          appModalSelect.appendChild(optionEl);
+        }
+        if (appModalSelect.options.length === 0) {
+          const emptyOption = document.createElement("option");
+          emptyOption.value = "";
+          emptyOption.textContent = "Sin resultados";
+          emptyOption.disabled = true;
+          emptyOption.selected = true;
+          appModalSelect.appendChild(emptyOption);
+          appModalOkBtn.disabled = true;
+          appModalSelectPreview.textContent = "";
+          return;
+        }
+        const optionValues = Array.from(appModalSelect.options).map((o) => o.value);
+        if (!optionValues.includes(rememberedValue)) rememberedValue = "";
+        if (rememberedValue) appModalSelect.value = rememberedValue;
+        if (!appModalSelect.value || appModalSelect.selectedOptions[0]?.disabled) {
+          const firstEnabled = Array.from(appModalSelect.options).find((o) => !o.disabled);
+          if (firstEnabled) firstEnabled.selected = true;
+        }
+        appModalOkBtn.disabled = !appModalSelect.value || appModalSelect.selectedOptions[0]?.disabled;
+      };
+      const updatePreview = () => {
+        rememberedValue = appModalSelect.value || rememberedValue;
+        const selected = safeOptions.find((opt) => String(opt.value ?? "") === String(appModalSelect.value || ""));
+        appModalSelectPreview.textContent = selected?.preview || "";
+        appModalOkBtn.disabled = !selected || Boolean(selected.disabled);
+      };
+      renderSelectOptions();
+      updatePreview();
+      appModalSelectSearch.hidden = false;
+      appModalSelect.hidden = false;
+      appModalSelectPreview.hidden = false;
+      onSelectSearchInput = () => {
+        renderSelectOptions();
+        updatePreview();
+      };
+      onSelectChange = () => updatePreview();
+      appModalSelectSearch.addEventListener("input", onSelectSearchInput);
+      appModalSelect.addEventListener("change", onSelectChange);
+    }
 
     let done = false;
     const closeAndResolve = (result) => {
@@ -80,7 +170,11 @@ function showAppModal({ title, message, mode, defaultValue, okText, cancelText, 
       if (appModal.open) appModal.close();
       resolve(result);
     };
-    const onOk = () => closeAndResolve(mode === "prompt" ? { ok: true, value: appModalInput.value } : { ok: true });
+    const onOk = () => {
+      if (mode === "prompt") closeAndResolve({ ok: true, value: appModalInput.value });
+      else if (mode === "select") closeAndResolve({ ok: true, value: appModalSelect.value || null });
+      else closeAndResolve({ ok: true });
+    };
     const onCancel = () => closeAndResolve(mode === "prompt" ? { ok: false, value: null } : { ok: false });
     const onClose = () => onCancel();
     const onInputKey = (ev) => {
@@ -95,8 +189,9 @@ function showAppModal({ title, message, mode, defaultValue, okText, cancelText, 
       appModal.removeEventListener("cancel", onCancel);
       appModal.removeEventListener("close", onClose);
       appModalInput.removeEventListener("keydown", onInputKey);
+      if (onSelectSearchInput) appModalSelectSearch.removeEventListener("input", onSelectSearchInput);
+      if (onSelectChange) appModalSelect.removeEventListener("change", onSelectChange);
     };
-
     appModalOkBtn.addEventListener("click", onOk);
     appModalCancelBtn.addEventListener("click", onCancel);
     appModal.addEventListener("cancel", onCancel);
@@ -104,6 +199,7 @@ function showAppModal({ title, message, mode, defaultValue, okText, cancelText, 
     appModalInput.addEventListener("keydown", onInputKey);
     appModal.showModal();
     if (mode === "prompt") appModalInput.focus();
+    else if (mode === "select") appModalSelectSearch.focus();
     else appModalOkBtn.focus();
   });
 }
@@ -128,6 +224,19 @@ async function appPrompt(message, options) {
     cancelText: options?.cancelText || "Cancelar",
   });
   return r.ok ? String(r.value || "") : null;
+}
+
+async function appSelect(message, options) {
+  const r = await showAppModal({
+    title: options?.title || "Eyedrive",
+    message,
+    mode: "select",
+    selectOptions: Array.isArray(options?.selectOptions) ? options.selectOptions : [],
+    selectedValue: options?.selectedValue || "",
+    okText: options?.okText || "Aceptar",
+    cancelText: options?.cancelText || "Cancelar",
+  });
+  return r.ok ? (r.value == null ? null : String(r.value)) : null;
 }
 
 function applyTheme(theme) {
@@ -477,34 +586,58 @@ async function askDestinationFolder(movingItems) {
     if (it.itemType === "folder") blocked.add(String(it.id));
   });
 
-  const choices = [{ id: "ROOT", label: "0) Mi unidad (raíz)" }];
+  const choices = [
+    {
+      id: "ROOT",
+      label: "Mi unidad (raíz)",
+      disabled: false,
+      searchText: "mi unidad raiz",
+      preview: "Destino: Mi unidad (raíz)",
+    },
+  ];
   const sorted = [...tree]
-    .map((f) => ({ id: String(f.id), label: pathMap.get(String(f.id)) || `Mi unidad / ${f.name}` }))
-    .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
-  sorted.forEach((c, idx) => {
-    const blockedMark = blocked.has(c.id) ? " [no disponible]" : "";
-    choices.push({ id: c.id, label: `${idx + 1}) ${c.label}${blockedMark}` });
+    .map((f) => {
+      const rawPath = pathMap.get(String(f.id)) || `Mi unidad / ${f.name}`;
+      const depth = Math.max(0, rawPath.split("/").length - 2);
+      const leafName = String(f.name || "Carpeta");
+      const treePrefix = depth > 0 ? `${"  ".repeat(depth)}└ ` : "";
+      return {
+        id: String(f.id),
+        label: `${treePrefix}${leafName}`,
+        rawPath,
+        depth,
+      };
+    })
+    .sort((a, b) => a.rawPath.localeCompare(b.rawPath, "es", { sensitivity: "base" }));
+  sorted.forEach((c) => {
+    const isBlocked = blocked.has(c.id);
+    const blockedMark = isBlocked ? " [no disponible]" : "";
+    choices.push({
+      id: c.id,
+      label: `${c.label}${blockedMark}`,
+      disabled: isBlocked,
+      searchText: `${c.rawPath} ${c.label}`.toLocaleLowerCase("es"),
+      preview: `Destino: ${c.rawPath}`,
+    });
   });
 
-  const text = [
-    "Elige carpeta destino:",
-    ...choices.map((c) => c.label),
-    "",
-    "Escribe el número (0 = Mi unidad).",
-  ].join("\n");
-  const raw = await appPrompt(text, { title: "Mover elementos" });
-  if (raw == null) return { cancelled: true };
-  const n = Number.parseInt(raw.trim(), 10);
-  if (!Number.isFinite(n) || n < 0 || n >= choices.length) {
-    await appAlert("Opción no válida.");
-    return { cancelled: true };
-  }
-  const picked = choices[n];
-  if (picked.id !== "ROOT" && blocked.has(picked.id)) {
+  const pickedId = await appSelect("Elige la carpeta destino.", {
+    title: "Mover elementos",
+    selectOptions: choices.map((c) => ({
+      value: c.id,
+      label: c.label,
+      disabled: c.disabled,
+      searchText: c.searchText,
+      preview: c.preview,
+    })),
+    selectedValue: "ROOT",
+  });
+  if (pickedId == null) return { cancelled: true };
+  if (pickedId !== "ROOT" && blocked.has(pickedId)) {
     await appAlert("No puedes mover una carpeta dentro de sí misma.");
     return { cancelled: true };
   }
-  return { cancelled: false, targetParentId: picked.id === "ROOT" ? null : picked.id };
+  return { cancelled: false, targetParentId: pickedId === "ROOT" ? null : pickedId };
 }
 
 async function moveItems(itemIds, targetParentId) {

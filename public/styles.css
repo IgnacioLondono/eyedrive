@@ -2126,10 +2126,11 @@ html[data-theme="dark"] .upload-progress__fill {
 .app-modal {
   width: min(28rem, 94vw);
   border: 1px solid var(--glass-stroke);
-  border-radius: 14px;
-  padding: 1rem 1.05rem;
+  border-radius: 16px;
+  padding: 1.15rem 1.15rem 1rem;
   background: var(--panel);
   color: var(--text);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.2);
 }
 
 .app-modal::backdrop {
@@ -2138,17 +2139,17 @@ html[data-theme="dark"] .upload-progress__fill {
 }
 
 .app-modal-head {
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.5rem;
 }
 
 .app-modal-title {
   margin: 0;
-  font-size: 1.04rem;
+  font-size: 1.12rem;
   font-weight: 800;
 }
 
 .app-modal-text {
-  margin: 0 0 0.7rem;
+  margin: 0 0 0.8rem;
   color: var(--text-soft);
   line-height: 1.45;
   white-space: pre-wrap;
@@ -2165,8 +2166,46 @@ html[data-theme="dark"] .upload-progress__fill {
   outline: none;
 }
 
+.app-modal-select-search {
+  width: 100%;
+  border: 1px solid var(--glass-stroke);
+  background: var(--panel-deep);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 0.58rem 0.7rem;
+  margin-bottom: 0.55rem;
+  outline: none;
+}
+
+.app-modal-select {
+  width: 100%;
+  border: 1px solid var(--glass-stroke);
+  background: var(--panel-deep);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 0.58rem 0.7rem;
+  margin-bottom: 0.75rem;
+  outline: none;
+  appearance: auto;
+}
+
 .app-modal-input:focus {
   border-color: color-mix(in srgb, var(--text) 45%, transparent);
+}
+
+.app-modal-select-search:focus {
+  border-color: color-mix(in srgb, var(--text) 45%, transparent);
+}
+
+.app-modal-select:focus {
+  border-color: color-mix(in srgb, var(--text) 45%, transparent);
+}
+
+.app-modal-select-preview {
+  margin: -0.2rem 0 0.75rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.35;
 }
 
 .app-modal-actions {
