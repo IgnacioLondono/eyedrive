@@ -87,6 +87,20 @@
           </div>
         </section>
 
+        <div id="uploadProgress" class="upload-progress" role="status" aria-live="polite" hidden>
+          <div class="upload-progress__head">
+            <strong id="uploadProgressTitle">Subiendo archivos…</strong>
+            <span id="uploadProgressPercent">0%</span>
+          </div>
+          <div class="upload-progress__bar">
+            <div id="uploadProgressFill" class="upload-progress__fill"></div>
+          </div>
+          <div class="upload-progress__meta">
+            <span id="uploadProgressText">Preparando subida…</span>
+            <button id="uploadCancelBtn" class="btn-secondary btn-ic" type="button">Cancelar</button>
+          </div>
+        </div>
+
         <section>
           <div class="content-heading-row">
             <div class="content-heading-group">

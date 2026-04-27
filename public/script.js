@@ -12,6 +12,12 @@ const emptyState = document.getElementById("emptyState");
 const refreshBtn = document.getElementById("refreshBtn");
 const themeToggleBtn = document.getElementById("themeToggleBtn");
 const dropzone = document.getElementById("dropzone");
+const uploadProgress = document.getElementById("uploadProgress");
+const uploadProgressTitle = document.getElementById("uploadProgressTitle");
+const uploadProgressPercent = document.getElementById("uploadProgressPercent");
+const uploadProgressText = document.getElementById("uploadProgressText");
+const uploadProgressFill = document.getElementById("uploadProgressFill");
+const uploadCancelBtn = document.getElementById("uploadCancelBtn");
 const cardTemplate = document.getElementById("fileCardTemplate");
 const breadcrumb = document.getElementById("breadcrumb");
 const navDrive = document.getElementById("navDrive");
@@ -685,6 +691,65 @@ dropzone.addEventListener("drop", async (event) => {
 
 /** Archivos por petición HTTP (por debajo del límite del servidor y para evitar timeouts). */
 const UPLOAD_BATCH_SIZE = 8000;
+let activeUploadController = null;
+
+function showUploadProgress(totalFiles) {
+  if (!uploadProgress) return;
+  if (uploadProgressTitle) {
+    uploadProgressTitle.textContent =
+      totalFiles === 1 ? "Subiendo 1 archivo…" : `Subiendo ${totalFiles} archivos…`;
+  }
+  if (uploadProgressPercent) uploadProgressPercent.textContent = "0%";
+  if (uploadProgressText) uploadProgressText.textContent = "Preparando subida…";
+  if (uploadProgressFill) uploadProgressFill.style.width = "0%";
+  uploadProgress.hidden = false;
+}
+
+function updateUploadProgress(done, total, label) {
+  const safeTotal = total > 0 ? total : 1;
+  const pct = Math.max(0, Math.min(100, Math.round((done / safeTotal) * 100)));
+  if (uploadProgressPercent) uploadProgressPercent.textContent = `${pct}%`;
+  if (uploadProgressFill) uploadProgressFill.style.width = `${pct}%`;
+  if (uploadProgressText && label) uploadProgressText.textContent = label;
+}
+
+function hideUploadProgress() {
+  if (!uploadProgress) return;
+  uploadProgress.hidden = true;
+}
+
+function resetDropzoneText() {
+  if (!dropzone) return;
+  const t = dropzone.querySelector(".dropzone-text");
+  if (t) {
+    t.innerHTML = `<strong>Suelta archivos aquí</strong><span>ZIP, RAR, JAR, EXE, MSI, ISO u carpetas (arrastre o «Subir carpeta»)</span>`;
+  }
+}
+
+function uploadBatchXHR(form, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/upload");
+    activeUploadController = { xhr, cancelled: false };
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress(event.loaded, event.total);
+    };
+    xhr.onload = () => {
+      resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status });
+    };
+    xhr.onerror = () => reject(new Error("upload network"));
+    xhr.onabort = () => reject(new Error("upload cancelled"));
+    xhr.send(form);
+  });
+}
+
+if (uploadCancelBtn) {
+  uploadCancelBtn.addEventListener("click", () => {
+    if (!activeUploadController?.xhr) return;
+    activeUploadController.cancelled = true;
+    activeUploadController.xhr.abort();
+  });
+}
 
 /**
  * @param {File[]} incoming
@@ -695,61 +760,78 @@ async function uploadFiles(incoming, relativePaths) {
   const pid = currentParentId();
   const usePaths = Array.isArray(relativePaths) && relativePaths.length === incoming.length;
   const total = incoming.length;
+  const totalBytes = incoming.reduce((acc, f) => acc + (Number(f.size) || 0), 0);
+  let completedBytes = 0;
   let uploaded = 0;
-  const dropEl = document.getElementById("dropzone");
-  const setProgress = (msg) => {
-    if (dropEl) {
-      const t = dropEl.querySelector(".dropzone-text");
-      if (t && total > UPLOAD_BATCH_SIZE) t.innerHTML = `<strong>${msg}</strong><span>Total: ${total} archivos</span>`;
-    }
-  };
+  showUploadProgress(total);
+  updateUploadProgress(0, totalBytes, "Iniciando…");
 
   try {
     for (let start = 0; start < total; start += UPLOAD_BATCH_SIZE) {
       const end = Math.min(start + UPLOAD_BATCH_SIZE, total);
-      if (total > UPLOAD_BATCH_SIZE) {
-        setProgress(`Subiendo… ${end} de ${total}`);
-      }
+      if (activeUploadController?.cancelled) throw new Error("upload cancelled");
       const form = new FormData();
       if (pid) form.append("parentId", pid);
+      let batchBytes = 0;
       for (let i = start; i < end; i++) {
         form.append("files", incoming[i]);
+        batchBytes += Number(incoming[i].size) || 0;
         if (usePaths) {
           form.append("relativePaths", relativePaths[i] || "");
         }
       }
-      const res = await fetch("/api/upload", { method: "POST", body: form });
+      const res = await uploadBatchXHR(form, (loaded, batchTotal) => {
+        const bt = batchTotal > 0 ? batchTotal : batchBytes;
+        updateUploadProgress(
+          completedBytes + loaded,
+          totalBytes,
+          `Subiendo… ${Math.min(end, total)} de ${total} archivos`
+        );
+        if (bt <= 0) {
+          updateUploadProgress(
+            completedBytes + loaded,
+            totalBytes,
+            `Subiendo… ${Math.min(end, total)} de ${total} archivos`
+          );
+        }
+      });
       if (res.status === 413) {
         alert("Algún archivo supera el tamaño máximo o el servidor rechaza el lote (revisa MAX_FILES en Docker).");
+        hideUploadProgress();
+        resetDropzoneText();
         return;
       }
       if (res.status === 409) {
         alert("Conflicto de nombre. Renombra o vacía un poco el destino e inténtalo de nuevo.");
+        hideUploadProgress();
+        resetDropzoneText();
         return;
       }
       if (!res.ok) throw new Error("upload");
       uploaded = end;
+      completedBytes += batchBytes;
+      updateUploadProgress(completedBytes, totalBytes, `Subiendo… ${uploaded} de ${total} archivos`);
     }
-    if (dropEl) {
-      const t = dropEl.querySelector(".dropzone-text");
-      if (t) {
-        t.innerHTML = `<strong>Suelta archivos aquí</strong><span>ZIP, RAR, JAR, EXE, MSI, ISO u carpetas (arrastre o «Subir carpeta»)</span>`;
-      }
-    }
+    updateUploadProgress(totalBytes || total, totalBytes || total, "Subida completada");
+    setTimeout(hideUploadProgress, 700);
+    resetDropzoneText();
     await loadItems();
   } catch (e) {
     console.error(e);
-    if (dropEl) {
-      const t = dropEl.querySelector(".dropzone-text");
-      if (t) {
-        t.innerHTML = `<strong>Suelta archivos aquí</strong><span>ZIP, RAR, JAR, EXE, MSI, ISO u carpetas (arrastre o «Subir carpeta»)</span>`;
-      }
+    resetDropzoneText();
+    if (String(e.message || "").includes("cancelled") || activeUploadController?.cancelled) {
+      hideUploadProgress();
+      if (uploaded > 0) alert(`Subida cancelada. Se subieron ${uploaded} de ${total} archivos.`);
+      return;
     }
+    hideUploadProgress();
     if (uploaded > 0 && uploaded < total) {
       alert(`Se subieron ${uploaded} de ${total} archivos. El resto falló o canceló.`);
     } else {
       alert("Error al subir archivos.");
     }
+  } finally {
+    activeUploadController = null;
   }
 }
 
@@ -1386,9 +1468,11 @@ function renderItems(list) {
     }
   }
 
-  emptyState.hidden = list.length > 0;
+  const hasCards = fileGrid.children.length > 0;
+  emptyState.hidden = hasCards;
+  emptyState.style.display = hasCards ? "none" : "flex";
   if (contentTableWrap && !pathSegments.length) {
-    contentTableWrap.hidden = list.length === 0;
+    contentTableWrap.hidden = !hasCards;
   }
 }
 
