@@ -685,6 +685,7 @@ function renderBreadcrumb() {
   const root = document.createElement("button");
   root.type = "button";
   root.className = "crumb";
+  if (!pathSegments.length) root.classList.add("crumb--active");
   root.textContent = "Mi unidad";
   root.addEventListener("click", () => {
     navigateToPath([], { push: true });
@@ -701,6 +702,7 @@ function renderBreadcrumb() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "crumb";
+    if (index === pathSegments.length - 1) btn.classList.add("crumb--active");
     btn.textContent = seg.name;
     btn.addEventListener("click", () => {
       navigateToPath(pathSegments.slice(0, index + 1), { push: true });

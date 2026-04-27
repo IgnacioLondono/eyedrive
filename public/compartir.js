@@ -111,6 +111,7 @@ function renderBreadcrumb() {
   const root = document.createElement("button");
   root.type = "button";
   root.className = "crumb";
+  if (!pathWithin.length) root.classList.add("crumb--active");
   root.textContent = shareFolderName;
   root.addEventListener("click", () => navigateSharePath([], { push: true }));
   shareBreadcrumb.appendChild(root);
@@ -125,6 +126,7 @@ function renderBreadcrumb() {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "crumb";
+    if (index === pathWithin.length - 1) b.classList.add("crumb--active");
     b.textContent = seg.name;
     b.addEventListener("click", () => navigateSharePath(pathWithin.slice(0, index + 1), { push: true }));
     shareBreadcrumb.appendChild(b);

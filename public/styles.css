@@ -2224,6 +2224,14 @@ html[data-theme="dark"] .file-card[aria-selected="true"] {
   background: var(--panel-deep) !important;
 }
 
+.breadcrumb .crumb.crumb--active,
+.share-breadcrumb .crumb.crumb--active {
+  font-weight: 800 !important;
+  border-color: color-mix(in srgb, var(--text) 45%, var(--glass-stroke)) !important;
+  background: color-mix(in srgb, var(--panel) 70%, var(--text) 30%) !important;
+  color: var(--text) !important;
+}
+
 /* Logos (principal y compartido): solo icono, sin fondo */
 .brand-icon,
 .share-hero-ic {
