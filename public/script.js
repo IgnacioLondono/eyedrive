@@ -580,7 +580,7 @@ async function removeItemsByIds(ids) {
   if (failed) await appAlert(`No se pudieron eliminar ${failed} elemento(s).`);
 }
 
-function downloadSelectedFileItems() {
+async function downloadSelectedFileItems() {
   const files = getSelectedFileItems();
   if (!files.length) {
     await appAlert("En la selección no hay archivos (solo carpetas o nada).");
@@ -1131,7 +1131,7 @@ function currentPathLabel() {
 /**
  * @param {any} item
  */
-function openItem(item) {
+async function openItem(item) {
   if (sharePickMode) {
     if (item.itemType !== "folder") {
       await appAlert("Solo se pueden compartir carpetas. Toca una carpeta o pulsa Esc para salir.");
@@ -1151,7 +1151,7 @@ function openItem(item) {
 /**
  * @param {any} item
  */
-function showItemInfo(item) {
+async function showItemInfo(item) {
   const isFolder = item.itemType === "folder";
   const line1 = isFolder
     ? `Carpeta: ${item.name}`
