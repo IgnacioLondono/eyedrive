@@ -18,6 +18,7 @@ const shareCopyBtn = document.getElementById("shareCopyBtn");
 const shareEmailBtn = document.getElementById("shareEmailBtn");
 const shareCloseBtn = document.getElementById("shareCloseBtn");
 const pickFilesBtn = document.getElementById("pickFilesBtn");
+const downloadCurrentFolderBtn = document.getElementById("downloadCurrentFolderBtn");
 const shareCurrentFolderBtn = document.getElementById("shareCurrentFolderBtn");
 const contextMenu = document.getElementById("contextMenu");
 const mainContent = document.querySelector("main.content");
@@ -46,6 +47,7 @@ function initDecorIcons() {
   fill("icDropzone", () => I.cloudUpload());
   fill("icContentHead", () => I.hardDrive());
   fill("icPickFiles", () => I.cloudUpload());
+  fill("icDownloadCurrent", () => I.download());
   fill("icShareCurrent", () => I.share());
   fill("icEmpty", () => I.folder());
   fill("icFolderTree", () => I.folder());
@@ -287,6 +289,7 @@ function updateShareFolderButton() {
 }
 
 function updateInFolderTools() {
+  const inside = pathSegments.length > 0;
   const t = newFolderBtn?.querySelector(".btn-text");
   if (t) t.textContent = newFolderActionLabel();
   if (newFolderBtn) {
@@ -297,6 +300,7 @@ function updateInFolderTools() {
         : "Crea una carpeta en la raíz (Mi unidad)"
     );
   }
+  if (downloadCurrentFolderBtn) downloadCurrentFolderBtn.hidden = !inside;
   updateShareFolderButton();
 }
 
@@ -433,6 +437,13 @@ if (shareCurrentFolderBtn) {
     } else {
       enterSharePickMode();
     }
+  });
+}
+if (downloadCurrentFolderBtn) {
+  downloadCurrentFolderBtn.addEventListener("click", () => {
+    const folder = currentFolder();
+    if (!folder) return;
+    downloadItem({ id: folder.id, name: folder.name, itemType: "folder" });
   });
 }
 if (sharePickCancelBtn) {
