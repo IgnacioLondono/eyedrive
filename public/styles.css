@@ -1524,7 +1524,7 @@ body.share-only .app {
 .context-menu-sep {
   height: 1px;
   margin: 0.3rem 0.45rem;
-  background: linear-gradient(90deg, transparent, rgba(109, 91, 253, 0.2), transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text) 28%, transparent), transparent);
   pointer-events: none;
 }
 
@@ -1546,8 +1546,8 @@ body.share-only .app {
 
 .context-menu-item:hover:not(:disabled),
 .context-menu-item:focus-visible {
-  background: rgba(109, 91, 253, 0.14);
-  color: #3d2a8a;
+  background: color-mix(in srgb, var(--panel) 72%, var(--text) 28%);
+  color: var(--text);
   outline: none;
 }
 
