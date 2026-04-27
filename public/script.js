@@ -17,6 +17,8 @@ const shareUrlInput = document.getElementById("shareUrlInput");
 const shareCopyBtn = document.getElementById("shareCopyBtn");
 const shareEmailBtn = document.getElementById("shareEmailBtn");
 const shareCloseBtn = document.getElementById("shareCloseBtn");
+const addHereBtn = document.getElementById("addHereBtn");
+const shareCurrentFolderBtn = document.getElementById("shareCurrentFolderBtn");
 
 /** @type {{ url: string, name: string }} */
 let lastShare = { url: "", name: "" };
@@ -36,6 +38,8 @@ function initDecorIcons() {
   fill("icNavDrive", () => I.hardDrive());
   fill("icDropzone", () => I.cloudUpload());
   fill("icContentHead", () => I.hardDrive());
+  fill("icAddHere", () => I.plus());
+  fill("icShareCurrent", () => I.share());
   fill("icEmpty", () => I.folder());
   fill("icFolderTree", () => I.folder());
   fill("icDialogShare", () => I.share());
@@ -51,6 +55,17 @@ let allItems = [];
 function currentParentId() {
   if (!pathSegments.length) return null;
   return pathSegments[pathSegments.length - 1].id;
+}
+
+function currentFolder() {
+  if (!pathSegments.length) return null;
+  return pathSegments[pathSegments.length - 1];
+}
+
+function updateInFolderTools() {
+  const inside = pathSegments.length > 0;
+  if (addHereBtn) addHereBtn.hidden = !inside;
+  if (shareCurrentFolderBtn) shareCurrentFolderBtn.hidden = !inside;
 }
 
 function itemsQuery() {
@@ -110,6 +125,7 @@ async function loadItems() {
   try {
     allItems = await apiList();
     renderBreadcrumb();
+    updateInFolderTools();
     applySearchFilter();
     fileCount.textContent = `${allItems.length} elemento${allItems.length === 1 ? "" : "s"}`;
   } catch (e) {
@@ -170,6 +186,17 @@ shareEmailBtn.addEventListener("click", () => {
 });
 
 uploadBtn.addEventListener("click", () => fileInput.click());
+
+if (addHereBtn) {
+  addHereBtn.addEventListener("click", () => fileInput.click());
+}
+
+if (shareCurrentFolderBtn) {
+  shareCurrentFolderBtn.addEventListener("click", () => {
+    const folder = currentFolder();
+    if (folder) openShareFolder({ id: folder.id, name: folder.name });
+  });
+}
 if (folderTreeBtn && folderInput) {
   folderTreeBtn.addEventListener("click", () => folderInput.click());
 }
@@ -254,37 +281,73 @@ dropzone.addEventListener("drop", async (event) => {
   if (list.length) uploadFiles(list, null);
 });
 
+/** Archivos por petición HTTP (por debajo del límite del servidor y para evitar timeouts). */
+const UPLOAD_BATCH_SIZE = 8000;
+
 /**
  * @param {File[]} incoming
  * @param {string[] | null} relativePaths mismo índice que incoming, o null = archivos en la carpeta actual
  */
 async function uploadFiles(incoming, relativePaths) {
   if (!incoming.length) return;
-  const form = new FormData();
   const pid = currentParentId();
-  if (pid) form.append("parentId", pid);
   const usePaths = Array.isArray(relativePaths) && relativePaths.length === incoming.length;
-  for (let i = 0; i < incoming.length; i++) {
-    form.append("files", incoming[i]);
-    if (usePaths) {
-      form.append("relativePaths", relativePaths[i] || "");
+  const total = incoming.length;
+  let uploaded = 0;
+  const dropEl = document.getElementById("dropzone");
+  const setProgress = (msg) => {
+    if (dropEl) {
+      const t = dropEl.querySelector(".dropzone-text");
+      if (t && total > UPLOAD_BATCH_SIZE) t.innerHTML = `<strong>${msg}</strong><span>Total: ${total} archivos</span>`;
     }
-  }
+  };
+
   try {
-    const res = await fetch("/api/upload", { method: "POST", body: form });
-    if (res.status === 413) {
-      alert("Algún archivo supera el tamaño máximo o hay demasiados archivos de una vez.");
-      return;
+    for (let start = 0; start < total; start += UPLOAD_BATCH_SIZE) {
+      const end = Math.min(start + UPLOAD_BATCH_SIZE, total);
+      if (total > UPLOAD_BATCH_SIZE) {
+        setProgress(`Subiendo… ${end} de ${total}`);
+      }
+      const form = new FormData();
+      if (pid) form.append("parentId", pid);
+      for (let i = start; i < end; i++) {
+        form.append("files", incoming[i]);
+        if (usePaths) {
+          form.append("relativePaths", relativePaths[i] || "");
+        }
+      }
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      if (res.status === 413) {
+        alert("Algún archivo supera el tamaño máximo o el servidor rechaza el lote (revisa MAX_FILES en Docker).");
+        return;
+      }
+      if (res.status === 409) {
+        alert("Conflicto de nombre. Renombra o vacía un poco el destino e inténtalo de nuevo.");
+        return;
+      }
+      if (!res.ok) throw new Error("upload");
+      uploaded = end;
     }
-    if (res.status === 409) {
-      alert("Conflicto de nombre. Renombra el archivo o la carpeta destino.");
-      return;
+    if (dropEl) {
+      const t = dropEl.querySelector(".dropzone-text");
+      if (t) {
+        t.innerHTML = `<strong>Suelta archivos aquí</strong><span>ZIP, RAR, JAR, EXE, MSI, ISO u carpetas (arrastre o «Subir carpeta»)</span>`;
+      }
     }
-    if (!res.ok) throw new Error("upload");
     await loadItems();
   } catch (e) {
     console.error(e);
-    alert("Error al subir archivos.");
+    if (dropEl) {
+      const t = dropEl.querySelector(".dropzone-text");
+      if (t) {
+        t.innerHTML = `<strong>Suelta archivos aquí</strong><span>ZIP, RAR, JAR, EXE, MSI, ISO u carpetas (arrastre o «Subir carpeta»)</span>`;
+      }
+    }
+    if (uploaded > 0 && uploaded < total) {
+      alert(`Se subieron ${uploaded} de ${total} archivos. El resto falló o canceló.`);
+    } else {
+      alert("Error al subir archivos.");
+    }
   }
 }
 
@@ -393,19 +456,7 @@ function renderItems(list) {
       window.EyeIcons.setFileIcon(icon, isFolder ? "folder" : "file");
     }
 
-    const shareBtn = node.querySelector(".share-link-btn");
     const delBtn = node.querySelector(".delete-btn");
-    if (isFolder) {
-      shareBtn.hidden = false;
-      const sic = shareBtn.querySelector(".icon-btn-ic");
-      if (sic && window.EyeIcons) sic.innerHTML = window.EyeIcons.share();
-      shareBtn.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        openShareFolder(item);
-      });
-    } else {
-      shareBtn.remove();
-    }
     const delIc = delBtn.querySelector(".icon-btn-ic");
     if (delIc && window.EyeIcons) delIc.innerHTML = window.EyeIcons.trash();
 
@@ -419,8 +470,7 @@ function renderItems(list) {
     };
 
     node.addEventListener("click", (ev) => {
-      if (ev.target.closest(".icon-btn") || ev.target.closest(".delete-btn") || ev.target.closest(".share-link-btn"))
-        return;
+      if (ev.target.closest(".icon-btn") || ev.target.closest(".delete-btn")) return;
       open();
     });
     node.addEventListener("keydown", (ev) => {

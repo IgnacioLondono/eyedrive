@@ -75,10 +75,33 @@
         </section>
 
         <section>
-          <h2 class="content-heading">
-            <span class="content-heading-ic" id="icContentHead" aria-hidden="true"></span>
-            Contenido
-          </h2>
+          <div class="content-heading-row">
+            <h2 class="content-heading">
+              <span class="content-heading-ic" id="icContentHead" aria-hidden="true"></span>
+              Contenido
+            </h2>
+            <div class="in-folder-tools">
+              <button
+                type="button"
+                id="addHereBtn"
+                class="btn-fab"
+                title="Añadir archivos aquí (puedes elegir varios)"
+                hidden
+                aria-label="Añadir archivos en esta carpeta"
+              >
+                <span class="btn-fab-ic" id="icAddHere" aria-hidden="true"></span>
+              </button>
+              <button
+                type="button"
+                id="shareCurrentFolderBtn"
+                class="btn-secondary btn-ic share-current-btn"
+                hidden
+              >
+                <span class="btn-icon" id="icShareCurrent" aria-hidden="true"></span>
+                <span class="btn-text">Compartir esta carpeta</span>
+              </button>
+            </div>
+          </div>
           <div id="fileGrid" class="file-grid"></div>
           <p id="emptyState" class="empty-state">
             <span class="empty-illu" id="icEmpty" aria-hidden="true"></span>
@@ -95,6 +118,8 @@
       </div>
       <p class="share-dialog-text">
         Solo quien tenga el enlace podrá ver esta carpeta y su contenido. No ve el resto de tu unidad.
+        Para abrirlo desde internet a menudo hace falta exponer el puerto o un túnel (VPN, Cloudflare Tunnel,
+        etc.); eso lo configuras tú en el router o en el servicio.
       </p>
       <input id="shareUrlInput" class="share-url-input" type="text" readonly value="" />
       <div class="share-dialog-actions">
@@ -118,10 +143,6 @@
           <small class="file-info"></small>
         </div>
         <div class="card-actions">
-          <button class="icon-btn share-link-btn" type="button" title="Generar enlace" hidden>
-            <span class="icon-btn-ic" data-role="ic"></span>
-            <span class="visually-hidden">Compartir</span>
-          </button>
           <button class="icon-btn delete-btn" type="button" title="Eliminar">
             <span class="icon-btn-ic" data-role="ic"></span>
             <span class="visually-hidden">Eliminar</span>

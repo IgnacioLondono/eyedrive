@@ -11,9 +11,10 @@ const MAX_FILE_BYTES = Number.parseInt(
   process.env.MAX_FILE_BYTES || String(8 * 1024 * 1024 * 1024),
   10
 );
+/* Límite por petición (subida en lotes en el cliente). Máx. 200000 por entorno. */
 const MAX_FILES_PER_REQUEST = Math.min(
-  Number.parseInt(process.env.MAX_FILES_PER_REQUEST || "3000", 10),
-  5000
+  Math.max(1, Number.parseInt(process.env.MAX_FILES_PER_REQUEST || "20000", 10)),
+  200000
 );
 const DATABASE_URL =
   process.env.DATABASE_URL ||

@@ -1,3 +1,6 @@
+# Compatible con Docker Compose v2 y Portainer (stack)
+version: "3.8"
+
 services:
   db:
     image: postgres:16-alpine
@@ -28,26 +31,19 @@ services:
       UPLOAD_DIR: /app/data/uploads
       PORT: "3000"
       MAX_FILE_BYTES: "8589934592"
-      MAX_FILES_PER_REQUEST: "3000"
+      MAX_FILES_PER_REQUEST: "20000"
     volumes:
       - eyed_files:/app/data
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      test:
-        [
-          "CMD",
-          "node",
-          "-e",
-          "require('http').get('http://127.0.0.1:3000/api/health',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))",
-        ]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/api/health"]
       interval: 30s
       timeout: 5s
       retries: 5
-      start_period: 25s
+      start_period: 30s
 
 volumes:
   eyed_pgdb:
   eyed_files:
-  
