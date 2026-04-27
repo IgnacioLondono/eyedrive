@@ -83,13 +83,12 @@
             <div class="in-folder-tools">
               <button
                 type="button"
-                id="addHereBtn"
-                class="btn-fab"
-                title="Añadir archivos aquí (puedes elegir varios)"
-                hidden
-                aria-label="Añadir archivos en esta carpeta"
+                id="pickFilesBtn"
+                class="btn-primary btn-ic"
+                title="Elegir uno o varios archivos; se suben a la carpeta que ves ahora (Mi unidad o la carpeta abierta)"
               >
-                <span class="btn-fab-ic" id="icAddHere" aria-hidden="true"></span>
+                <span class="btn-icon" id="icPickFiles" aria-hidden="true"></span>
+                <span class="btn-text">Elegir archivos</span>
               </button>
               <button
                 type="button"
@@ -150,6 +149,14 @@
         </div>
       </article>
     </template>
+
+    <div
+      id="contextMenu"
+      class="context-menu"
+      role="menu"
+      hidden
+      aria-label="Acciones"
+    ></div>
 
     <script src="icons.js"></script>
     <script src="script.js"></script>

@@ -17,8 +17,11 @@ const shareUrlInput = document.getElementById("shareUrlInput");
 const shareCopyBtn = document.getElementById("shareCopyBtn");
 const shareEmailBtn = document.getElementById("shareEmailBtn");
 const shareCloseBtn = document.getElementById("shareCloseBtn");
-const addHereBtn = document.getElementById("addHereBtn");
+const pickFilesBtn = document.getElementById("pickFilesBtn");
 const shareCurrentFolderBtn = document.getElementById("shareCurrentFolderBtn");
+const contextMenu = document.getElementById("contextMenu");
+const mainContent = document.querySelector("main.content");
+const sidebar = document.querySelector("aside.sidebar");
 
 /** @type {{ url: string, name: string }} */
 let lastShare = { url: "", name: "" };
@@ -30,7 +33,7 @@ function initDecorIcons() {
     const el = document.getElementById(id);
     if (el) el.innerHTML = fn();
   };
-  fill("brandIcon", () => I.cloud());
+  fill("brandIcon", () => I.eye());
   fill("icUpload", () => I.cloudUpload());
   fill("icNewFolder", () => I.folderPlus());
   fill("icSearch", () => I.search());
@@ -38,7 +41,7 @@ function initDecorIcons() {
   fill("icNavDrive", () => I.hardDrive());
   fill("icDropzone", () => I.cloudUpload());
   fill("icContentHead", () => I.hardDrive());
-  fill("icAddHere", () => I.plus());
+  fill("icPickFiles", () => I.cloudUpload());
   fill("icShareCurrent", () => I.share());
   fill("icEmpty", () => I.folder());
   fill("icFolderTree", () => I.folder());
@@ -64,7 +67,6 @@ function currentFolder() {
 
 function updateInFolderTools() {
   const inside = pathSegments.length > 0;
-  if (addHereBtn) addHereBtn.hidden = !inside;
   if (shareCurrentFolderBtn) shareCurrentFolderBtn.hidden = !inside;
 }
 
@@ -185,11 +187,12 @@ shareEmailBtn.addEventListener("click", () => {
   window.location.href = `mailto:?subject=${sub}&body=${body}`;
 });
 
-uploadBtn.addEventListener("click", () => fileInput.click());
-
-if (addHereBtn) {
-  addHereBtn.addEventListener("click", () => fileInput.click());
+function openFilePicker() {
+  fileInput.click();
 }
+
+uploadBtn.addEventListener("click", openFilePicker);
+if (pickFilesBtn) pickFilesBtn.addEventListener("click", openFilePicker);
 
 if (shareCurrentFolderBtn) {
   shareCurrentFolderBtn.addEventListener("click", () => {
@@ -217,7 +220,7 @@ if (folderInput) {
   });
 }
 
-newFolderBtn.addEventListener("click", async () => {
+async function createNewFolder() {
   const name = window.prompt("Nombre de la carpeta:");
   if (!name || !name.trim()) return;
   const body = { name: name.trim() };
@@ -239,7 +242,9 @@ newFolderBtn.addEventListener("click", async () => {
     console.error(e);
     alert("No se pudo crear la carpeta.");
   }
-});
+}
+
+newFolderBtn.addEventListener("click", createNewFolder);
 
 searchInput.addEventListener("input", () => applySearchFilter());
 
@@ -419,6 +424,284 @@ async function collectFromDataTransfer(dataTransfer) {
   return out;
 }
 
+function findItemById(id) {
+  return allItems.find((x) => String(x.id) === String(id));
+}
+
+function currentPathLabel() {
+  if (!pathSegments.length) return "Mi unidad";
+  return ["Mi unidad", ...pathSegments.map((s) => s.name)].join(" / ");
+}
+
+/**
+ * @param {any} item
+ */
+function openItem(item) {
+  if (item.itemType === "folder") {
+    pathSegments = [...pathSegments, { id: item.id, name: item.name }];
+    fileInput.value = "";
+    loadItems();
+  } else {
+    window.location.assign(`/api/files/${item.id}/download`);
+  }
+}
+
+/**
+ * @param {any} item
+ */
+function showItemInfo(item) {
+  const isFolder = item.itemType === "folder";
+  const line1 = isFolder
+    ? `Carpeta: ${item.name}`
+    : `Archivo: ${item.name} (${formatSize(item.size)})`;
+  const lines = [line1, `Añadido: ${formatDate(item.addedAt)}`, `Id: ${item.id}`];
+  alert(lines.join("\n"));
+}
+
+function openFileDownloadNewTab(item) {
+  if (item.itemType === "folder") {
+    openItem(item);
+    return;
+  }
+  const url = `${location.origin}/api/files/${item.id}/download`;
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function downloadUrlForFile(item) {
+  return `${location.origin}/api/files/${item.id}/download`;
+}
+
+async function copyString(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+    } finally {
+      document.body.removeChild(ta);
+    }
+  }
+}
+
+function goToDriveRoot() {
+  pathSegments = [];
+  fileInput.value = "";
+  searchInput.value = "";
+  loadItems();
+}
+
+function openFolderTreePicker() {
+  if (folderInput) folderInput.click();
+}
+
+function clearSearch() {
+  searchInput.value = "";
+  applySearchFilter();
+}
+
+let contextMenuCloseCleanup = null;
+
+function hideContextMenu() {
+  if (contextMenu) contextMenu.hidden = true;
+  if (contextMenuCloseCleanup) {
+    contextMenuCloseCleanup();
+    contextMenuCloseCleanup = null;
+  }
+}
+
+/**
+ * @param {number} clientX
+ * @param {number} clientY
+ * @param {{ id?: string, separator?: boolean, label?: string, run?: () => void, danger?: boolean, disabled?: boolean }[]} entries
+ */
+function showContextMenu(clientX, clientY, entries) {
+  if (!contextMenu) return;
+  hideContextMenu();
+  contextMenu.innerHTML = "";
+  for (const e of entries) {
+    if (e.separator) {
+      const sep = document.createElement("div");
+      sep.className = "context-menu-sep";
+      sep.setAttribute("role", "separator");
+      contextMenu.appendChild(sep);
+      continue;
+    }
+    if (!e.run) continue;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "context-menu-item" + (e.danger ? " context-menu-item--danger" : "");
+    if (e.id) btn.id = e.id;
+    btn.setAttribute("role", "menuitem");
+    btn.textContent = e.label || "";
+    btn.disabled = !!e.disabled;
+    btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const fn = e.run;
+      hideContextMenu();
+      fn();
+    });
+    contextMenu.appendChild(btn);
+  }
+  contextMenu.hidden = false;
+  void contextMenu.offsetWidth;
+  const pad = 8;
+  const rect = contextMenu.getBoundingClientRect();
+  let left = clientX;
+  let top = clientY;
+  if (left + rect.width > window.innerWidth - pad) left = window.innerWidth - rect.width - pad;
+  if (top + rect.height > window.innerHeight - pad) top = window.innerHeight - rect.height - pad;
+  if (left < pad) left = pad;
+  if (top < pad) top = pad;
+  contextMenu.style.left = `${left}px`;
+  contextMenu.style.top = `${top}px`;
+
+  const onDocMouseDown = (ev) => {
+    if (ev.button !== 0) return;
+    if (contextMenu && contextMenu.contains(ev.target)) return;
+    hideContextMenu();
+  };
+  const onKey = (ev) => {
+    if (ev.key === "Escape") {
+      ev.preventDefault();
+      hideContextMenu();
+    }
+  };
+  const onScrollOrResize = () => hideContextMenu();
+  setTimeout(() => {
+    document.addEventListener("mousedown", onDocMouseDown, true);
+    document.addEventListener("keydown", onKey, true);
+    window.addEventListener("scroll", onScrollOrResize, true);
+    window.addEventListener("resize", onScrollOrResize);
+  }, 0);
+  contextMenuCloseCleanup = () => {
+    document.removeEventListener("mousedown", onDocMouseDown, true);
+    document.removeEventListener("keydown", onKey, true);
+    window.removeEventListener("scroll", onScrollOrResize, true);
+    window.removeEventListener("resize", onScrollOrResize);
+  };
+}
+
+if (contextMenu) {
+  contextMenu.addEventListener("contextmenu", (ev) => ev.preventDefault());
+  contextMenu.addEventListener("mousedown", (ev) => ev.stopPropagation());
+}
+
+function buildBackgroundMenu() {
+  const hasSearch = searchInput.value.trim().length > 0;
+  const inside = pathSegments.length > 0;
+  const items = [
+    { label: "Elegir archivos", run: openFilePicker },
+    { label: "Subir carpeta", run: openFolderTreePicker },
+    { label: "Nueva carpeta", run: createNewFolder },
+    { separator: true },
+    { label: "Actualizar", run: () => loadItems() },
+  ];
+  if (hasSearch) {
+    items.push({ label: "Limpiar búsqueda", run: clearSearch });
+  }
+  if (inside) {
+    items.push(
+      { separator: true },
+      { label: "Volver a Mi unidad", run: goToDriveRoot },
+      {
+        label: "Compartir esta carpeta",
+        run: () => {
+          const folder = currentFolder();
+          if (folder) openShareFolder({ id: folder.id, name: folder.name });
+        },
+      },
+      { label: "Copiar ruta", run: () => copyString(currentPathLabel()) }
+    );
+  } else {
+    items.push(
+      { separator: true },
+      { label: "Copiar ruta (Mi unidad)", run: () => copyString(currentPathLabel()) }
+    );
+  }
+  return items;
+}
+
+function buildBreadcrumbMenu() {
+  const items = [{ label: "Copiar ruta", run: () => copyString(currentPathLabel()) }];
+  if (pathSegments.length > 0) {
+    items.push({ separator: true }, { label: "Ir a Mi unidad", run: goToDriveRoot });
+  }
+  return items;
+}
+
+/**
+ * @param {any} item
+ */
+function buildItemMenu(item) {
+  const isFolder = item.itemType === "folder";
+  if (isFolder) {
+    return [
+      { label: "Abrir", run: () => openItem(item) },
+      { label: "Compartir", run: () => openShareFolder(item) },
+      { label: "Copiar nombre", run: () => copyString(item.name) },
+      { separator: true },
+      { label: "Información", run: () => showItemInfo(item) },
+      { label: "Eliminar", run: () => removeItem(item.id), danger: true },
+    ];
+  }
+  return [
+    { label: "Abrir o descargar", run: () => openItem(item) },
+    { label: "Abrir en otra pestaña", run: () => openFileDownloadNewTab(item) },
+    { label: "Copiar enlace de descarga", run: () => copyString(downloadUrlForFile(item)) },
+    { label: "Copiar nombre", run: () => copyString(item.name) },
+    { separator: true },
+    { label: "Información", run: () => showItemInfo(item) },
+    { label: "Eliminar", run: () => removeItem(item.id), danger: true },
+  ];
+}
+
+document.addEventListener("contextmenu", (ev) => {
+  if (contextMenu && !contextMenu.hidden && contextMenu.contains(ev.target)) {
+    return;
+  }
+  const t = ev.target;
+  if (t == null) return;
+  if (t.closest("dialog[open]")) return;
+  if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) return;
+  if (t.closest("input, textarea, [contenteditable='true']")) return;
+
+  const card = t.closest?.(".file-card");
+  if (card && fileGrid?.contains(card)) {
+    const id = card.getAttribute("data-item-id");
+    const item = id != null ? findItemById(id) : null;
+    ev.preventDefault();
+    if (item) showContextMenu(ev.clientX, ev.clientY, buildItemMenu(item));
+    else showContextMenu(ev.clientX, ev.clientY, buildBackgroundMenu());
+    return;
+  }
+
+  if (t.closest?.(".breadcrumb")) {
+    ev.preventDefault();
+    showContextMenu(ev.clientX, ev.clientY, buildBreadcrumbMenu());
+    return;
+  }
+
+  if (t.closest?.("#contextMenu")) return;
+
+  if (sidebar && sidebar.contains(t) && !t.closest("input, textarea")) {
+    ev.preventDefault();
+    showContextMenu(ev.clientX, ev.clientY, buildBackgroundMenu());
+    return;
+  }
+
+  if (mainContent && mainContent.contains(t)) {
+    if (t.closest("input, textarea, select")) return;
+    ev.preventDefault();
+    showContextMenu(ev.clientX, ev.clientY, buildBackgroundMenu());
+  }
+});
+
 async function removeItem(id) {
   if (!window.confirm("¿Eliminar? Si es una carpeta, se borrará todo su contenido.")) return;
   try {
@@ -460,23 +743,16 @@ function renderItems(list) {
     const delIc = delBtn.querySelector(".icon-btn-ic");
     if (delIc && window.EyeIcons) delIc.innerHTML = window.EyeIcons.trash();
 
-    const open = () => {
-      if (isFolder) {
-        pathSegments = [...pathSegments, { id: item.id, name: item.name }];
-        loadItems();
-      } else {
-        window.location.assign(`/api/files/${item.id}/download`);
-      }
-    };
+    node.dataset.itemId = String(item.id);
 
     node.addEventListener("click", (ev) => {
       if (ev.target.closest(".icon-btn") || ev.target.closest(".delete-btn")) return;
-      open();
+      openItem(item);
     });
     node.addEventListener("keydown", (ev) => {
       if (ev.key === "Enter" || ev.key === " ") {
         ev.preventDefault();
-        open();
+        openItem(item);
       }
     });
 

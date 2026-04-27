@@ -140,7 +140,7 @@ async function init() {
   document.title = `${shareFolderName} — compartido`;
   if (window.EyeIcons) {
     const b = document.getElementById("shareBrandIcon");
-    if (b) b.innerHTML = window.EyeIcons.cloud();
+    if (b) b.innerHTML = window.EyeIcons.eye();
     const e = document.getElementById("shareEmptyIcon");
     if (e) e.innerHTML = window.EyeIcons.folder();
   }
