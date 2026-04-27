@@ -54,8 +54,51 @@ function initDecorIcons() {
   fill("icMail", () => I.mail());
 }
 
+const NAV_STATE_KEY = "eyedrive.nav.pathSegments.v1";
+
+/**
+ * @param {unknown} raw
+ * @returns {{ id: string, name: string }[]}
+ */
+function normalizeSegments(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const seg of raw) {
+    if (!seg || typeof seg !== "object") continue;
+    const id = typeof seg.id === "string" ? seg.id.trim() : "";
+    const name = typeof seg.name === "string" ? seg.name.trim() : "";
+    if (!id || !name) continue;
+    out.push({ id, name });
+  }
+  return out;
+}
+
+function readPersistedPathSegments() {
+  try {
+    const hs = normalizeSegments(history.state?.pathSegments);
+    if (hs.length) return hs;
+  } catch {}
+  try {
+    const txt = sessionStorage.getItem(NAV_STATE_KEY);
+    if (!txt) return [];
+    return normalizeSegments(JSON.parse(txt));
+  } catch {
+    return [];
+  }
+}
+
+function writePersistedPathSegments({ push }) {
+  const clean = normalizeSegments(pathSegments);
+  const state = { ...(history.state || {}), pathSegments: clean };
+  if (push) history.pushState(state, "", location.href);
+  else history.replaceState(state, "", location.href);
+  try {
+    sessionStorage.setItem(NAV_STATE_KEY, JSON.stringify(clean));
+  } catch {}
+}
+
 /** @type {{ id: string, name: string }[]} */
-let pathSegments = [];
+let pathSegments = readPersistedPathSegments();
 /** @type {any[]} */
 let allItems = [];
 /** Ids de elementos seleccionados (string) */
@@ -78,6 +121,21 @@ function clearSelectionStateOnly() {
 function clearSelection() {
   clearSelectionStateOnly();
   applySearchFilter();
+}
+
+/**
+ * @param {{ id: string, name: string }[]} nextPath
+ * @param {{ push?: boolean, clearSearch?: boolean }} [opts]
+ */
+function navigateToPath(nextPath, opts) {
+  const push = Boolean(opts?.push);
+  pathSegments = normalizeSegments(nextPath);
+  fileInput.value = "";
+  clearSelectionStateOnly();
+  if (opts?.clearSearch) searchInput.value = "";
+  if (pathSegments.length > 0) exitSharePickMode();
+  writePersistedPathSegments({ push });
+  loadItems();
 }
 
 function pruneSelection() {
@@ -261,11 +319,7 @@ function renderBreadcrumb() {
   root.className = "crumb";
   root.textContent = "Mi unidad";
   root.addEventListener("click", () => {
-    pathSegments = [];
-    fileInput.value = "";
-    clearSelectionStateOnly();
-    exitSharePickMode();
-    loadItems();
+    navigateToPath([], { push: true });
   });
   breadcrumb.appendChild(root);
 
@@ -281,10 +335,7 @@ function renderBreadcrumb() {
     btn.className = "crumb";
     btn.textContent = seg.name;
     btn.addEventListener("click", () => {
-      pathSegments = pathSegments.slice(0, index + 1);
-      fileInput.value = "";
-      clearSelectionStateOnly();
-      loadItems();
+      navigateToPath(pathSegments.slice(0, index + 1), { push: true });
     });
     breadcrumb.appendChild(btn);
   });
@@ -300,6 +351,7 @@ async function loadItems() {
     allItems = await apiList();
     pruneSelection();
     if (pathSegments.length > 0) exitSharePickMode();
+    writePersistedPathSegments({ push: false });
     renderBreadcrumb();
     updateInFolderTools();
     applySearchFilter();
@@ -443,10 +495,7 @@ refreshBtn.addEventListener("click", () => loadItems());
 
 navDrive.addEventListener("click", (e) => {
   e.preventDefault();
-  pathSegments = [];
-  clearSelectionStateOnly();
-  exitSharePickMode();
-  loadItems();
+  navigateToPath([], { push: true });
 });
 
 dropzone.addEventListener("dragover", (event) => {
@@ -639,10 +688,7 @@ function openItem(item) {
     return;
   }
   if (item.itemType === "folder") {
-    clearSelectionStateOnly();
-    pathSegments = [...pathSegments, { id: item.id, name: item.name }];
-    fileInput.value = "";
-    loadItems();
+    navigateToPath([...pathSegments, { id: item.id, name: item.name }], { push: true });
   } else {
     clearSelection();
     window.location.assign(`/api/files/${item.id}/download`);
@@ -674,6 +720,15 @@ function downloadUrlForFile(item) {
   return `${location.origin}/api/files/${item.id}/download`;
 }
 
+function downloadUrlForItem(item) {
+  if (item.itemType === "folder") return `${location.origin}/api/items/${item.id}/download`;
+  return downloadUrlForFile(item);
+}
+
+function downloadItem(item) {
+  window.location.assign(downloadUrlForItem(item));
+}
+
 async function copyString(text) {
   try {
     await navigator.clipboard.writeText(text);
@@ -693,12 +748,7 @@ async function copyString(text) {
 }
 
 function goToDriveRoot() {
-  exitSharePickMode();
-  pathSegments = [];
-  fileInput.value = "";
-  searchInput.value = "";
-  clearSelectionStateOnly();
-  loadItems();
+  navigateToPath([], { push: true, clearSearch: true });
 }
 
 function openFolderTreePicker() {
@@ -924,6 +974,7 @@ function buildItemMenu(item) {
   if (isFolder) {
     out.push(
       { label: "Abrir", run: () => openItem(item) },
+      { label: "Descargar", run: () => downloadItem(item) },
       { label: "Compartir", run: () => openShareFolder(item) },
       { label: "Copiar nombre", run: () => copyString(item.name) },
       { separator: true },
@@ -933,6 +984,7 @@ function buildItemMenu(item) {
   } else {
     out.push(
       { label: "Abrir o descargar", run: () => openItem(item) },
+      { label: "Descargar", run: () => downloadItem(item) },
       { label: "Abrir en otra pestaña", run: () => openFileDownloadNewTab(item) },
       { label: "Copiar enlace de descarga", run: () => copyString(downloadUrlForFile(item)) },
       { label: "Copiar nombre", run: () => copyString(item.name) },
@@ -998,6 +1050,15 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     clearSelection();
   }
+});
+
+window.addEventListener("popstate", (ev) => {
+  const next = normalizeSegments(ev.state?.pathSegments);
+  pathSegments = next;
+  fileInput.value = "";
+  clearSelectionStateOnly();
+  if (next.length > 0) exitSharePickMode();
+  loadItems();
 });
 
 async function removeItem(id) {

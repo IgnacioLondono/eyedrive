@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const express = require("express");
 const multer = require("multer");
 const { Pool } = require("pg");
+const archiver = require("archiver");
 
 const PORT = Number(process.env.PORT) || 3000;
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, "data", "uploads");
@@ -304,6 +305,106 @@ app.post("/api/upload", upload.array("files", MAX_FILES_PER_REQUEST), async (req
     res.status(500).json({ error: "Error al subir" });
   } finally {
     if (client) client.release();
+  }
+});
+
+function sanitizeArchivePart(name, fallback) {
+  const n = String(name || "")
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_")
+    .replace(/\.+$/g, "")
+    .trim();
+  return n || fallback;
+}
+
+async function streamFolderZip(res, folderId, folderName) {
+  const { rows } = await pool.query(
+    `WITH RECURSIVE tree AS (
+       SELECT id, parent_id, name, type, storage_key
+       FROM items
+       WHERE id = $1::uuid
+       UNION ALL
+       SELECT i.id, i.parent_id, i.name, i.type, i.storage_key
+       FROM items i
+       INNER JOIN tree t ON i.parent_id = t.id
+     )
+     SELECT id, parent_id, name, type, storage_key FROM tree`,
+    [folderId]
+  );
+
+  const byParent = new Map();
+  for (const row of rows) {
+    const p = row.parent_id || "__root__";
+    if (!byParent.has(p)) byParent.set(p, []);
+    byParent.get(p).push(row);
+  }
+
+  const rootName = sanitizeArchivePart(folderName, "carpeta");
+  const archiveName = `${rootName}.zip`;
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename*=UTF-8''${encodeURIComponent(archiveName)}`
+  );
+  res.setHeader("Content-Type", "application/zip");
+
+  const archive = archiver("zip", { zlib: { level: 9 } });
+  archive.on("error", (err) => {
+    console.error(err);
+    if (!res.headersSent) res.status(500).end();
+    else res.end();
+  });
+  archive.pipe(res);
+  archive.append("", { name: `${rootName}/` });
+
+  const walk = (parentId, relBase) => {
+    const kids = byParent.get(parentId) || [];
+    for (const k of kids) {
+      if (k.type === "folder") {
+        const safe = sanitizeArchivePart(k.name, "carpeta");
+        const nextRel = `${relBase}${safe}/`;
+        archive.append("", { name: nextRel });
+        walk(k.id, nextRel);
+      } else if (k.type === "file" && k.storage_key) {
+        const filePath = path.join(UPLOAD_DIR, k.storage_key);
+        if (!fs.existsSync(filePath)) continue;
+        const safe = sanitizeArchivePart(k.name, "archivo");
+        archive.file(filePath, { name: `${relBase}${safe}` });
+      }
+    }
+  };
+  walk(folderId, `${rootName}/`);
+  await archive.finalize();
+}
+
+app.get("/api/items/:id/download", async (req, res) => {
+  if (!UUID_RE.test(req.params.id)) {
+    return res.status(400).end();
+  }
+  const { id } = req.params;
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, name, type, storage_key, mime_type FROM items WHERE id = $1::uuid`,
+      [id]
+    );
+    if (!rows.length) return res.status(404).end();
+    const row = rows[0];
+    if (row.type === "file") {
+      const filePath = path.join(UPLOAD_DIR, row.storage_key || "");
+      if (!row.storage_key || !fs.existsSync(filePath)) return res.status(404).end();
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename*=UTF-8''${encodeURIComponent(row.name)}`
+      );
+      if (row.mime_type) res.setHeader("Content-Type", row.mime_type);
+      return fs.createReadStream(filePath).pipe(res);
+    }
+    if (row.type === "folder") {
+      await streamFolderZip(res, id, row.name);
+      return;
+    }
+    return res.status(404).end();
+  } catch (e) {
+    console.error(e);
+    res.status(500).end();
   }
 });
 
