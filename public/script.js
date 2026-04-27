@@ -21,6 +21,7 @@ const uploadCancelBtn = document.getElementById("uploadCancelBtn");
 const cardTemplate = document.getElementById("fileCardTemplate");
 const breadcrumb = document.getElementById("breadcrumb");
 const navDrive = document.getElementById("navDrive");
+const sidebarFolderTree = document.getElementById("sidebarFolderTree");
 const shareDialog = document.getElementById("shareDialog");
 const shareUrlInput = document.getElementById("shareUrlInput");
 const shareCopyBtn = document.getElementById("shareCopyBtn");
@@ -40,6 +41,8 @@ const THEME_KEY = "eyedrive.theme.v1";
 
 /** @type {{ url: string, name: string }} */
 let lastShare = { url: "", name: "" };
+/** ids de carpetas expandidas en el árbol lateral */
+const expandedFolderIds = new Set();
 
 function applyTheme(theme) {
   const t = theme === "dark" ? "dark" : "light";
@@ -252,6 +255,132 @@ function buildFolderPathMap(folders) {
   const pathMap = new Map();
   byId.forEach((_, id) => pathMap.set(id, pathOf(id)));
   return { byId, pathMap };
+}
+
+function buildFolderByIdMap(folders) {
+  const byId = new Map();
+  folders.forEach((f) => {
+    byId.set(String(f.id), {
+      id: String(f.id),
+      name: String(f.name || ""),
+      parentId: f.parentId == null ? null : String(f.parentId),
+    });
+  });
+  return byId;
+}
+
+function folderPathSegmentsFromId(byId, targetId) {
+  const tid = String(targetId || "");
+  if (!tid || !byId.has(tid)) return [];
+  const chain = [];
+  let cur = byId.get(tid);
+  const guard = new Set();
+  while (cur && !guard.has(cur.id)) {
+    guard.add(cur.id);
+    chain.push({ id: cur.id, name: cur.name });
+    if (!cur.parentId) break;
+    cur = byId.get(cur.parentId) || null;
+  }
+  return chain.reverse();
+}
+
+function ensureExpandedPathFromCurrent() {
+  pathSegments.forEach((seg) => expandedFolderIds.add(String(seg.id)));
+}
+
+function renderSidebarFolderTree(folders) {
+  if (!sidebarFolderTree) return;
+  const byParent = new Map();
+  const byId = buildFolderByIdMap(folders);
+  folders.forEach((f) => {
+    const parentKey = f.parentId == null ? "ROOT" : String(f.parentId);
+    const arr = byParent.get(parentKey) || [];
+    arr.push({ id: String(f.id), name: String(f.name || ""), parentId: f.parentId == null ? null : String(f.parentId) });
+    byParent.set(parentKey, arr);
+  });
+  for (const [k, arr] of byParent) {
+    arr.sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
+    byParent.set(k, arr);
+  }
+
+  const activeId = pathSegments.length ? String(pathSegments[pathSegments.length - 1].id) : "";
+  sidebarFolderTree.innerHTML = "";
+
+  const renderChildren = (parentId, level, ancestorsHasNext) => {
+    const key = parentId == null ? "ROOT" : String(parentId);
+    const children = byParent.get(key) || [];
+    children.forEach((node, idx) => {
+      const isLast = idx === children.length - 1;
+      const item = document.createElement("div");
+      item.className = "tree-item";
+      item.style.setProperty("--level", String(level));
+
+      const row = document.createElement("div");
+      row.className = "tree-row";
+
+      const guides = document.createElement("span");
+      guides.className = "tree-guides";
+      for (let i = 0; i < level; i++) {
+        const g = document.createElement("span");
+        g.className = "tree-guide";
+        if (ancestorsHasNext[i]) g.classList.add("tree-guide--line");
+        guides.appendChild(g);
+      }
+      row.appendChild(guides);
+
+      const elbow = document.createElement("span");
+      elbow.className = `tree-elbow ${isLast ? "tree-elbow--last" : ""}`;
+      row.appendChild(elbow);
+
+      const hasChildren = (byParent.get(node.id) || []).length > 0;
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "tree-toggle";
+      toggle.setAttribute("aria-label", hasChildren ? "Expandir o contraer" : "Sin subcarpetas");
+      if (!hasChildren) toggle.disabled = true;
+      toggle.textContent = hasChildren ? (expandedFolderIds.has(node.id) ? "▾" : "▸") : "•";
+      toggle.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        if (!hasChildren) return;
+        if (expandedFolderIds.has(node.id)) expandedFolderIds.delete(node.id);
+        else expandedFolderIds.add(node.id);
+        renderSidebarFolderTree(folders);
+      });
+      row.appendChild(toggle);
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "tree-node-btn";
+      if (activeId === node.id) btn.classList.add("active");
+      btn.textContent = node.name;
+      btn.title = `Abrir ${node.name}`;
+      btn.addEventListener("click", () => {
+        const nextSegments = folderPathSegmentsFromId(byId, node.id);
+        navigateToPath(nextSegments, { push: true });
+      });
+      row.appendChild(btn);
+
+      item.appendChild(row);
+      sidebarFolderTree.appendChild(item);
+
+      if (hasChildren && expandedFolderIds.has(node.id)) {
+        renderChildren(node.id, level + 1, [...ancestorsHasNext, !isLast]);
+      }
+    });
+  };
+
+  renderChildren(null, 0, []);
+}
+
+async function refreshSidebarFolderTree() {
+  if (!sidebarFolderTree) return;
+  try {
+    ensureExpandedPathFromCurrent();
+    const folders = await apiFolderTree();
+    renderSidebarFolderTree(Array.isArray(folders) ? folders : []);
+  } catch (e) {
+    console.error(e);
+  }
 }
 
 async function askDestinationFolder(movingItems) {
@@ -510,6 +639,7 @@ async function loadItems() {
     updateInFolderTools();
     applySearchFilter();
     fileCount.textContent = `${allItems.length} elemento${allItems.length === 1 ? "" : "s"}`;
+    await refreshSidebarFolderTree();
   } catch (e) {
     console.error(e);
     alert("No se pudo cargar. Comprueba la conexión e inténtalo de nuevo.");
