@@ -1028,6 +1028,32 @@ body.share-only .app {
   max-width: 23rem;
   flex: 1 1 16rem;
   margin: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(244, 241, 255, 0.9));
+  border: 1px solid rgba(109, 91, 253, 0.28);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 8px 20px rgba(49, 31, 128, 0.1);
+}
+
+.share-search-wrap .search-ic {
+  color: #5f49dc;
+  opacity: 0.95;
+}
+
+.share-search-wrap input {
+  color: #2b1f62;
+  font-weight: 600;
+}
+
+.share-search-wrap input::placeholder {
+  color: #7c72a7;
+}
+
+.share-search-wrap:focus-within {
+  border-color: rgba(109, 91, 253, 0.64);
+  box-shadow:
+    0 0 0 3px rgba(109, 91, 253, 0.18),
+    0 10px 24px rgba(61, 42, 138, 0.14);
 }
 
 .share-actions .btn-primary,
