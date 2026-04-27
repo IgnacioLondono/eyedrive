@@ -21,6 +21,30 @@
           <p class="share-sub">Vista compartida · solo lectura</p>
         </header>
         <nav id="shareBreadcrumb" class="breadcrumb share-breadcrumb" aria-label="Ruta"></nav>
+        <div class="share-actions">
+          <span id="shareSelectionInfo" class="share-selection-info">0 seleccionados</span>
+          <label class="search-wrap share-search-wrap" for="shareSearchInput">
+            <span class="search-ic" id="shareSearchIcon" aria-hidden="true"></span>
+            <input
+              id="shareSearchInput"
+              type="search"
+              placeholder="Buscar en esta carpeta…"
+              autocomplete="off"
+            />
+          </label>
+          <button id="shareDownloadCurrentBtn" class="btn-secondary btn-ic" type="button">
+            <span class="btn-text">Descargar esta carpeta</span>
+          </button>
+          <button id="shareSelectAllBtn" class="btn-secondary btn-ic" type="button">
+            <span class="btn-text">Seleccionar todo</span>
+          </button>
+          <button id="shareClearSelectionBtn" class="btn-secondary btn-ic" type="button" disabled>
+            <span class="btn-text">Limpiar selección</span>
+          </button>
+          <button id="shareDownloadSelectedBtn" class="btn-primary btn-ic" type="button" disabled>
+            <span class="btn-text">Descargar selección</span>
+          </button>
+        </div>
         <p id="shareError" class="share-error" role="alert" hidden></p>
         <div id="shareGrid" class="file-grid share-grid"></div>
         <p id="shareEmpty" class="empty-state share-empty" hidden>

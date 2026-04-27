@@ -4,8 +4,15 @@ const shareGrid = document.getElementById("shareGrid");
 const shareEmpty = document.getElementById("shareEmpty");
 const shareError = document.getElementById("shareError");
 const cardTemplate = document.getElementById("shareCardTemplate");
+const shareSelectionInfo = document.getElementById("shareSelectionInfo");
+const shareSelectAllBtn = document.getElementById("shareSelectAllBtn");
+const shareClearSelectionBtn = document.getElementById("shareClearSelectionBtn");
+const shareDownloadSelectedBtn = document.getElementById("shareDownloadSelectedBtn");
+const shareSearchInput = document.getElementById("shareSearchInput");
+const shareDownloadCurrentBtn = document.getElementById("shareDownloadCurrentBtn");
 
 const TOKEN_RE = /^[0-9a-f]{64}$/i;
+const SHARE_NAV_KEY = `eyedrive.share.path.v1:${token}`;
 /** @type {string} */
 let rootId = "";
 /** @type {string} */
@@ -14,6 +21,21 @@ let shareFolderName = "";
 let pathWithin = [];
 /** @type {any[]} */
 let listCache = [];
+const selectedIds = new Set();
+let selectionAnchorIndex = -1;
+
+function normalizeSegments(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const seg of raw) {
+    if (!seg || typeof seg !== "object") continue;
+    const id = typeof seg.id === "string" ? seg.id.trim() : "";
+    const name = typeof seg.name === "string" ? seg.name.trim() : "";
+    if (!id || !name) continue;
+    out.push({ id, name });
+  }
+  return out;
+}
 
 function currentParentId() {
   if (!pathWithin.length) return rootId;
@@ -34,16 +56,43 @@ function formatDate(dateString) {
   }).format(new Date(dateString));
 }
 
+function getFilteredList() {
+  const q = shareSearchInput?.value.trim().toLowerCase() || "";
+  if (!q) return listCache;
+  return listCache.filter((x) => String(x.name || "").toLowerCase().includes(q));
+}
+
+function writeSharePathState({ push }) {
+  const clean = normalizeSegments(pathWithin);
+  const state = { ...(history.state || {}), sharePathWithin: clean };
+  if (push) history.pushState(state, "", location.href);
+  else history.replaceState(state, "", location.href);
+  try {
+    sessionStorage.setItem(SHARE_NAV_KEY, JSON.stringify(clean));
+  } catch {}
+}
+
+function readSharePathState() {
+  try {
+    const hs = normalizeSegments(history.state?.sharePathWithin);
+    if (hs.length) return hs;
+  } catch {}
+  try {
+    const txt = sessionStorage.getItem(SHARE_NAV_KEY);
+    if (!txt) return [];
+    return normalizeSegments(JSON.parse(txt));
+  } catch {
+    return [];
+  }
+}
+
 function renderBreadcrumb() {
   shareBreadcrumb.innerHTML = "";
   const root = document.createElement("button");
   root.type = "button";
   root.className = "crumb";
   root.textContent = shareFolderName;
-  root.addEventListener("click", () => {
-    pathWithin = [];
-    loadList();
-  });
+  root.addEventListener("click", () => navigateSharePath([], { push: true }));
   shareBreadcrumb.appendChild(root);
 
   pathWithin.forEach((seg, index) => {
@@ -57,12 +106,61 @@ function renderBreadcrumb() {
     b.type = "button";
     b.className = "crumb";
     b.textContent = seg.name;
-    b.addEventListener("click", () => {
-      pathWithin = pathWithin.slice(0, index + 1);
-      loadList();
-    });
+    b.addEventListener("click", () => navigateSharePath(pathWithin.slice(0, index + 1), { push: true }));
     shareBreadcrumb.appendChild(b);
   });
+}
+
+function clearSelectionState() {
+  selectedIds.clear();
+  selectionAnchorIndex = -1;
+}
+
+function updateSelectionUi() {
+  if (shareSelectionInfo) {
+    const n = selectedIds.size;
+    shareSelectionInfo.textContent = `${n} seleccionado${n === 1 ? "" : "s"}`;
+  }
+  if (shareClearSelectionBtn) shareClearSelectionBtn.disabled = selectedIds.size === 0;
+  if (shareDownloadSelectedBtn) shareDownloadSelectedBtn.disabled = selectedIds.size === 0;
+}
+
+function currentSelectionItems() {
+  return getFilteredList().filter((x) => selectedIds.has(String(x.id)));
+}
+
+function downloadUrlForSharedItem(item) {
+  return `/api/share/${encodeURIComponent(token)}/item/${encodeURIComponent(item.id)}/download`;
+}
+
+function downloadSelection() {
+  const items = currentSelectionItems();
+  if (!items.length) return;
+  items.forEach((item, idx) => {
+    setTimeout(() => {
+      window.open(downloadUrlForSharedItem(item), "_blank", "noopener,noreferrer");
+    }, idx * 180);
+  });
+}
+
+function downloadCurrentFolder() {
+  const current = pathWithin.length ? pathWithin[pathWithin.length - 1] : { id: rootId, name: shareFolderName };
+  if (!current?.id) return;
+  window.location.assign(downloadUrlForSharedItem(current));
+}
+
+function navigateSharePath(nextPath, opts) {
+  pathWithin = normalizeSegments(nextPath);
+  clearSelectionState();
+  if (opts?.clearSearch && shareSearchInput) shareSearchInput.value = "";
+  writeSharePathState({ push: Boolean(opts?.push) });
+  loadList();
+}
+
+function updateCardsSelectionClass(visible) {
+  shareGrid
+    .querySelectorAll(".file-card")
+    .forEach((card, i) => card.classList.toggle("file-card--selected", selectedIds.has(String(visible[i].id))));
 }
 
 async function loadList() {
@@ -83,9 +181,16 @@ async function loadList() {
     return;
   }
   listCache = await res.json();
+  writeSharePathState({ push: false });
+  clearSelectionState();
   renderBreadcrumb();
   shareGrid.innerHTML = "";
-  for (const item of listCache) {
+  if (shareDownloadCurrentBtn) {
+    shareDownloadCurrentBtn.textContent = pathWithin.length ? "Descargar subcarpeta actual" : "Descargar esta carpeta";
+  }
+  updateSelectionUi();
+  const visible = getFilteredList();
+  for (const [idx, item] of visible.entries()) {
     const isFolder = item.itemType === "folder";
     const node = cardTemplate.content.firstElementChild.cloneNode(true);
     const icon = node.querySelector(".file-icon");
@@ -101,24 +206,51 @@ async function loadList() {
     }
     const go = () => {
       if (isFolder) {
-        pathWithin = [...pathWithin, { id: item.id, name: item.name }];
-        loadList();
+        navigateSharePath([...pathWithin, { id: item.id, name: item.name }], { push: true });
       } else {
-        window.location.assign(
-          `/api/share/${encodeURIComponent(token)}/file/${encodeURIComponent(item.id)}/download`
-        );
+        window.location.assign(downloadUrlForSharedItem(item));
       }
     };
-    node.addEventListener("click", go);
+    node.addEventListener("click", (ev) => {
+      const id = String(item.id);
+      if (ev.shiftKey && selectionAnchorIndex >= 0) {
+        const a = Math.min(selectionAnchorIndex, idx);
+        const b = Math.max(selectionAnchorIndex, idx);
+        for (let i = a; i <= b; i++) selectedIds.add(String(visible[i].id));
+        updateSelectionUi();
+        updateCardsSelectionClass(visible);
+        return;
+      }
+      if (ev.ctrlKey || ev.metaKey) {
+        if (selectedIds.has(id)) selectedIds.delete(id);
+        else selectedIds.add(id);
+        selectionAnchorIndex = idx;
+        node.classList.toggle("file-card--selected", selectedIds.has(id));
+        updateSelectionUi();
+        return;
+      }
+      go();
+    });
     node.addEventListener("keydown", (ev) => {
       if (ev.key === "Enter" || ev.key === " ") {
         ev.preventDefault();
         go();
       }
     });
+    node.addEventListener("contextmenu", (ev) => {
+      ev.preventDefault();
+      const id = String(item.id);
+      if (!selectedIds.has(id)) {
+        clearSelectionState();
+        selectedIds.add(id);
+        selectionAnchorIndex = idx;
+        updateCardsSelectionClass(visible);
+        updateSelectionUi();
+      }
+    });
     shareGrid.appendChild(node);
   }
-  shareEmpty.hidden = listCache.length > 0;
+  shareEmpty.hidden = visible.length > 0;
 }
 
 async function init() {
@@ -136,15 +268,54 @@ async function init() {
   const data = await res.json();
   rootId = data.rootId;
   shareFolderName = data.folderName;
-  pathWithin = [];
+  pathWithin = readSharePathState();
   document.title = `${shareFolderName} — compartido`;
   if (window.EyeIcons) {
     const b = document.getElementById("shareBrandIcon");
     if (b) b.innerHTML = window.EyeIcons.eye();
     const e = document.getElementById("shareEmptyIcon");
     if (e) e.innerHTML = window.EyeIcons.folder();
+    const s = document.getElementById("shareSearchIcon");
+    if (s) s.innerHTML = window.EyeIcons.search();
   }
   await loadList();
 }
+
+if (shareSelectAllBtn) {
+  shareSelectAllBtn.addEventListener("click", () => {
+    clearSelectionState();
+    const visible = getFilteredList();
+    visible.forEach((x) => selectedIds.add(String(x.id)));
+    selectionAnchorIndex = visible.length ? 0 : -1;
+    updateCardsSelectionClass(visible);
+    updateSelectionUi();
+  });
+}
+
+if (shareClearSelectionBtn) {
+  shareClearSelectionBtn.addEventListener("click", () => {
+    clearSelectionState();
+    shareGrid.querySelectorAll(".file-card").forEach((card) => card.classList.remove("file-card--selected"));
+    updateSelectionUi();
+  });
+}
+
+if (shareDownloadSelectedBtn) {
+  shareDownloadSelectedBtn.addEventListener("click", () => downloadSelection());
+}
+
+if (shareSearchInput) {
+  shareSearchInput.addEventListener("input", () => loadList());
+}
+
+if (shareDownloadCurrentBtn) {
+  shareDownloadCurrentBtn.addEventListener("click", () => downloadCurrentFolder());
+}
+
+window.addEventListener("popstate", (ev) => {
+  pathWithin = normalizeSegments(ev.state?.sharePathWithin);
+  clearSelectionState();
+  loadList();
+});
 
 init();

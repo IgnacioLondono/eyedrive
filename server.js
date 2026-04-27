@@ -572,6 +572,50 @@ app.get("/api/share/:token/file/:id/download", async (req, res) => {
   }
 });
 
+app.get("/api/share/:token/item/:id/download", async (req, res) => {
+  if (!TOKEN_RE.test(req.params.token) || !UUID_RE.test(req.params.id)) {
+    return res.status(400).end();
+  }
+  const { id } = req.params;
+  try {
+    const { rows: sr } = await pool.query(
+      `SELECT s.folder_id FROM shares s WHERE s.token = $1`,
+      [req.params.token]
+    );
+    if (!sr.length) {
+      return res.status(404).end();
+    }
+    const shareRootId = sr[0].folder_id;
+    if (!(await isUnderSharedFolder(shareRootId, id))) {
+      return res.status(404).end();
+    }
+    const { rows } = await pool.query(
+      `SELECT id, name, type, storage_key, mime_type FROM items WHERE id = $1::uuid`,
+      [id]
+    );
+    if (!rows.length) return res.status(404).end();
+    const row = rows[0];
+    if (row.type === "file") {
+      const filePath = path.join(UPLOAD_DIR, row.storage_key || "");
+      if (!row.storage_key || !fs.existsSync(filePath)) return res.status(404).end();
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename*=UTF-8''${encodeURIComponent(row.name)}`
+      );
+      if (row.mime_type) res.setHeader("Content-Type", row.mime_type);
+      return fs.createReadStream(filePath).pipe(res);
+    }
+    if (row.type === "folder") {
+      await streamFolderZip(res, row.id, row.name);
+      return;
+    }
+    return res.status(404).end();
+  } catch (e) {
+    console.error(e);
+    res.status(500).end();
+  }
+});
+
 app.delete("/api/items/:id", async (req, res) => {
   if (!UUID_RE.test(req.params.id)) {
     return res.status(400).json({ error: "id no válido" });
