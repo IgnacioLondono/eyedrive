@@ -1589,3 +1589,183 @@ html[data-theme="dark"] .breadcrumb .crumb {
     flex: 1 1 100%;
   }
 }
+
+/* =========================================================
+   Rediseño minimalista global (sin botones morados)
+   ========================================================= */
+
+:root {
+  --primary: #0b57d0;
+  --secondary: #2563eb;
+  --text: #101317;
+  --text-soft: #1f2937;
+  --muted: #5f6b7a;
+  --border: rgba(16, 19, 23, 0.1);
+  --glass-stroke: rgba(16, 19, 23, 0.1);
+  --sidebar-text: #101317;
+  --sidebar-muted: #5f6b7a;
+}
+
+html[data-theme="dark"] {
+  --primary: #60a5fa;
+  --secondary: #38bdf8;
+  --text: #eef2f8;
+  --text-soft: #dbe4f2;
+  --muted: #a9b6c9;
+  --border: rgba(255, 255, 255, 0.12);
+  --glass-stroke: rgba(255, 255, 255, 0.14);
+}
+
+body,
+.content,
+.sidebar,
+.share-app .share-content {
+  font-family: "DM Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+.sidebar {
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] .sidebar {
+  background: #121723 !important;
+  box-shadow: none !important;
+}
+
+.brand-icon,
+.share-hero-ic {
+  background: rgba(11, 87, 208, 0.08) !important;
+  border: 1px solid rgba(11, 87, 208, 0.16);
+  box-shadow: none !important;
+}
+
+.brand-icon .icon-svg,
+.share-hero-ic .icon-svg {
+  color: #0b57d0 !important;
+  filter: none !important;
+}
+
+html[data-theme="dark"] .brand-icon .icon-svg,
+html[data-theme="dark"] .share-hero-ic .icon-svg {
+  color: #60a5fa !important;
+}
+
+.file-card,
+.dropzone,
+.search-wrap,
+.share-actions,
+.share-app .share-content,
+.file-count-pill,
+.breadcrumb .crumb,
+.share-breadcrumb .crumb {
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+
+.file-card:hover,
+.share-readonly:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(16, 19, 23, 0.08) !important;
+}
+
+html[data-theme="dark"] .file-card:hover,
+html[data-theme="dark"] .share-readonly:hover {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Botones minimalistas sin morado */
+.btn-primary,
+.btn-secondary,
+.btn-ghost,
+.theme-toggle-btn {
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+}
+
+.btn-primary {
+  background: #111827 !important;
+  border: 1px solid #111827 !important;
+  color: #ffffff !important;
+}
+
+.btn-primary:hover {
+  background: #0f172a !important;
+  border-color: #0f172a !important;
+}
+
+.btn-secondary,
+.share-actions .btn-secondary {
+  background: #ffffff !important;
+  border: 1px solid rgba(16, 19, 23, 0.16) !important;
+  color: #111827 !important;
+}
+
+.btn-secondary:hover,
+.share-actions .btn-secondary:hover {
+  background: #f8fafc !important;
+}
+
+.btn-ghost {
+  background: transparent !important;
+  border: 1px solid rgba(16, 19, 23, 0.14) !important;
+  color: var(--text) !important;
+}
+
+html[data-theme="dark"] .btn-primary {
+  background: #60a5fa !important;
+  border-color: #60a5fa !important;
+  color: #0b1220 !important;
+}
+
+html[data-theme="dark"] .btn-secondary,
+html[data-theme="dark"] .share-actions .btn-secondary {
+  background: #1a2130 !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #eaf0fa !important;
+}
+
+html[data-theme="dark"] .btn-secondary:hover,
+html[data-theme="dark"] .share-actions .btn-secondary:hover {
+  background: #1f2a3d !important;
+}
+
+.search-wrap,
+.share-search-wrap {
+  border: 1px solid rgba(16, 19, 23, 0.16) !important;
+  background: #ffffff !important;
+}
+
+.search-ic,
+.share-search-wrap .search-ic {
+  color: #4b5563 !important;
+}
+
+#searchInput,
+#shareSearchInput {
+  color: #111827 !important;
+  background: transparent !important;
+}
+
+#searchInput::placeholder,
+#shareSearchInput::placeholder {
+  color: #8a94a4 !important;
+}
+
+html[data-theme="dark"] .search-wrap,
+html[data-theme="dark"] .share-search-wrap {
+  background: #1a2130 !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+html[data-theme="dark"] #searchInput,
+html[data-theme="dark"] #shareSearchInput {
+  color: #eaf0fa !important;
+}
+
+html[data-theme="dark"] #searchInput::placeholder,
+html[data-theme="dark"] #shareSearchInput::placeholder {
+  color: #9aa7be !important;
+}
