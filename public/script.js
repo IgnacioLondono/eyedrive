@@ -197,6 +197,123 @@ function getSelectedFileItems() {
   );
 }
 
+function getSelectedMovableItems() {
+  return allItems.filter((x) => selectedItemIds.has(String(x.id)));
+}
+
+async function apiFolderTree() {
+  const res = await fetch("/api/folders/tree");
+  if (!res.ok) throw new Error("tree");
+  return res.json();
+}
+
+function buildFolderPathMap(folders) {
+  const byId = new Map();
+  folders.forEach((f) => byId.set(String(f.id), { ...f, id: String(f.id), parentId: f.parentId == null ? null : String(f.parentId) }));
+  const cache = new Map();
+  const pathOf = (id) => {
+    const key = String(id);
+    if (cache.has(key)) return cache.get(key);
+    const node = byId.get(key);
+    if (!node) return "Mi unidad / ?";
+    const p = node.parentId && byId.has(node.parentId) ? `${pathOf(node.parentId)} / ${node.name}` : `Mi unidad / ${node.name}`;
+    cache.set(key, p);
+    return p;
+  };
+  const pathMap = new Map();
+  byId.forEach((_, id) => pathMap.set(id, pathOf(id)));
+  return { byId, pathMap };
+}
+
+async function askDestinationFolder(movingItems) {
+  const tree = await apiFolderTree();
+  const { pathMap } = buildFolderPathMap(tree);
+  const blocked = new Set();
+  movingItems.forEach((it) => {
+    if (it.itemType === "folder") blocked.add(String(it.id));
+  });
+
+  const choices = [{ id: "ROOT", label: "0) Mi unidad (raíz)" }];
+  const sorted = [...tree]
+    .map((f) => ({ id: String(f.id), label: pathMap.get(String(f.id)) || `Mi unidad / ${f.name}` }))
+    .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
+  sorted.forEach((c, idx) => {
+    const blockedMark = blocked.has(c.id) ? " [no disponible]" : "";
+    choices.push({ id: c.id, label: `${idx + 1}) ${c.label}${blockedMark}` });
+  });
+
+  const text = [
+    "Elige carpeta destino:",
+    ...choices.map((c) => c.label),
+    "",
+    "Escribe el número (0 = Mi unidad).",
+  ].join("\n");
+  const raw = window.prompt(text);
+  if (raw == null) return { cancelled: true };
+  const n = Number.parseInt(raw.trim(), 10);
+  if (!Number.isFinite(n) || n < 0 || n >= choices.length) {
+    alert("Opción no válida.");
+    return { cancelled: true };
+  }
+  const picked = choices[n];
+  if (picked.id !== "ROOT" && blocked.has(picked.id)) {
+    alert("No puedes mover una carpeta dentro de sí misma.");
+    return { cancelled: true };
+  }
+  return { cancelled: false, targetParentId: picked.id === "ROOT" ? null : picked.id };
+}
+
+async function moveItems(itemIds, targetParentId) {
+  const res = await fetch("/api/items/move", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ itemIds, targetParentId }),
+  });
+  if (res.status === 409) {
+    const d = await res.json().catch(() => ({}));
+    alert(d.error || "No se puede mover por conflicto.");
+    return false;
+  }
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    alert(d.error || "No se pudo mover.");
+    return false;
+  }
+  return true;
+}
+
+async function moveSelectedItems() {
+  const items = getSelectedMovableItems();
+  if (!items.length) {
+    alert("Selecciona al menos un elemento.");
+    return;
+  }
+  try {
+    const ask = await askDestinationFolder(items);
+    if (ask.cancelled) return;
+    const ok = await moveItems(items.map((x) => x.id), ask.targetParentId);
+    if (!ok) return;
+    clearSelectionStateOnly();
+    await loadItems();
+  } catch (e) {
+    console.error(e);
+    alert("No se pudo mover.");
+  }
+}
+
+async function moveSingleItem(item) {
+  try {
+    const ask = await askDestinationFolder([item]);
+    if (ask.cancelled) return;
+    const ok = await moveItems([item.id], ask.targetParentId);
+    if (!ok) return;
+    await loadItems();
+  } catch (e) {
+    console.error(e);
+    alert("No se pudo mover.");
+  }
+}
+
 async function removeItemsByIds(ids) {
   if (!ids.length) return;
   const n = ids.length;
@@ -880,6 +997,10 @@ function buildBackgroundMenu() {
     items.push(
       { label: "Quitar selección", run: clearSelection },
       {
+        label: nSel > 1 ? `Mover ${nSel} seleccionados` : "Mover seleccionado",
+        run: moveSelectedItems,
+      },
+      {
         label: `Descargar archivos de la selección${nFilesSelected ? ` (${nFilesSelected})` : ""}`,
         run: downloadSelectedFileItems,
         disabled: nFilesSelected === 0,
@@ -963,6 +1084,10 @@ function buildItemMenu(item) {
   if (nSel >= 2 && inSel) {
     out.push(
       {
+        label: `Mover ${nSel} seleccionados`,
+        run: moveSelectedItems,
+      },
+      {
         label: `Descargar archivos de la selección${nFilesInSel ? ` (${nFilesInSel})` : ""}`,
         run: downloadSelectedFileItems,
         disabled: nFilesInSel === 0,
@@ -986,6 +1111,7 @@ function buildItemMenu(item) {
     out.push(
       { label: "Abrir", run: () => openItem(item) },
       { label: "Descargar", run: () => downloadItem(item) },
+      { label: "Mover…", run: () => moveSingleItem(item) },
       { label: "Compartir", run: () => openShareFolder(item) },
       { label: "Copiar nombre", run: () => copyString(item.name) },
       { separator: true },
@@ -996,6 +1122,7 @@ function buildItemMenu(item) {
     out.push(
       { label: "Abrir o descargar", run: () => openItem(item) },
       { label: "Descargar", run: () => downloadItem(item) },
+      { label: "Mover…", run: () => moveSingleItem(item) },
       { label: "Abrir en otra pestaña", run: () => openFileDownloadNewTab(item) },
       { label: "Copiar enlace de descarga", run: () => copyString(downloadUrlForFile(item)) },
       { label: "Copiar nombre", run: () => copyString(item.name) },
@@ -1070,6 +1197,19 @@ window.addEventListener("popstate", (ev) => {
   clearSelectionStateOnly();
   if (next.length > 0) exitSharePickMode();
   loadItems();
+});
+
+let lastAutoRefreshAt = 0;
+function autoRefreshIfStale() {
+  const now = Date.now();
+  if (now - lastAutoRefreshAt < 4000) return;
+  lastAutoRefreshAt = now;
+  loadItems();
+}
+
+window.addEventListener("focus", () => autoRefreshIfStale());
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") autoRefreshIfStale();
 });
 
 async function removeItem(id) {

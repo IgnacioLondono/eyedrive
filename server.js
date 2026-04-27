@@ -616,6 +616,119 @@ app.get("/api/share/:token/item/:id/download", async (req, res) => {
   }
 });
 
+app.get("/api/folders/tree", async (_req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, parent_id, name
+       FROM items
+       WHERE type = 'folder'
+       ORDER BY lower(name)`
+    );
+    res.json(
+      rows.map((r) => ({
+        id: r.id,
+        parentId: r.parent_id,
+        name: r.name,
+      }))
+    );
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Error al listar carpetas" });
+  }
+});
+
+app.post("/api/items/move", async (req, res) => {
+  const idsRaw = Array.isArray(req.body?.itemIds) ? req.body.itemIds : [];
+  const itemIds = [...new Set(idsRaw.map((x) => String(x || "").trim()))].filter((x) => UUID_RE.test(x));
+  if (!itemIds.length) {
+    return res.status(400).json({ error: "itemIds requerido" });
+  }
+  const pr = toParentUuid(req.body?.targetParentId);
+  if (!pr.ok) return res.status(400).json({ error: pr.error });
+  const targetParentId = pr.value;
+
+  let client;
+  try {
+    client = await pool.connect();
+    await client.query("BEGIN");
+
+    const { rows: targetRows } = await client.query(
+      `SELECT id, type FROM items WHERE id IS NOT DISTINCT FROM $1::uuid`,
+      [targetParentId]
+    );
+    if (targetParentId && (!targetRows.length || targetRows[0].type !== "folder")) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Carpeta destino no encontrada" });
+    }
+
+    const { rows: srcRows } = await client.query(
+      `SELECT id, parent_id, name, type FROM items WHERE id = ANY($1::uuid[])`,
+      [itemIds]
+    );
+    if (srcRows.length !== itemIds.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Uno o más elementos no existen" });
+    }
+
+    for (const row of srcRows) {
+      if (String(row.id) === String(targetParentId || "")) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({ error: "No se puede mover una carpeta dentro de sí misma" });
+      }
+      if (row.type !== "folder") continue;
+      if (!targetParentId) continue;
+      const { rows: under } = await client.query(
+        `WITH RECURSIVE tree AS (
+           SELECT id, parent_id FROM items WHERE id = $1::uuid
+           UNION ALL
+           SELECT i.id, i.parent_id FROM items i
+           INNER JOIN tree t ON i.parent_id = t.id
+         )
+         SELECT EXISTS(SELECT 1 FROM tree WHERE id = $2::uuid) AS bad`,
+        [row.id, targetParentId]
+      );
+      if (under[0].bad) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({ error: "No se puede mover una carpeta dentro de su subcarpeta" });
+      }
+    }
+
+    for (const row of srcRows) {
+      const currentParent = row.parent_id || null;
+      if (String(currentParent || "") === String(targetParentId || "")) continue;
+      const { rows: conflict } = await client.query(
+        `SELECT id FROM items
+         WHERE parent_id IS NOT DISTINCT FROM $1::uuid
+           AND name = $2
+           AND id <> $3::uuid
+         LIMIT 1`,
+        [targetParentId, row.name, row.id]
+      );
+      if (conflict.length) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({ error: `Ya existe "${row.name}" en la carpeta destino` });
+      }
+    }
+
+    await client.query(
+      `UPDATE items SET parent_id = $1::uuid WHERE id = ANY($2::uuid[])`,
+      [targetParentId, itemIds]
+    );
+    await client.query("COMMIT");
+    res.status(200).json({ moved: itemIds.length });
+  } catch (e) {
+    if (client) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {}
+    }
+    console.error(e);
+    res.status(500).json({ error: "Error al mover elementos" });
+  } finally {
+    if (client) client.release();
+  }
+});
+
 app.delete("/api/items/:id", async (req, res) => {
   if (!UUID_RE.test(req.params.id)) {
     return res.status(400).json({ error: "id no válido" });
