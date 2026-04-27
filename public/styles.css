@@ -2224,8 +2224,9 @@ html[data-theme="dark"] .file-card[aria-selected="true"] {
   background: var(--panel-deep) !important;
 }
 
-/* Sidebar: logo solo icono, sin fondo */
-.brand-icon {
+/* Logos (principal y compartido): solo icono, sin fondo */
+.brand-icon,
+.share-hero-ic {
   width: auto !important;
   height: auto !important;
   padding: 0 !important;
@@ -2235,9 +2236,16 @@ html[data-theme="dark"] .file-card[aria-selected="true"] {
   box-shadow: none !important;
 }
 
-.brand-icon .icon-svg {
+.brand-icon .icon-svg,
+.share-hero-ic .icon-svg {
   width: 1.45rem !important;
   height: 1.45rem !important;
+  color: #101317 !important;
+}
+
+html[data-theme="dark"] .brand-icon .icon-svg,
+html[data-theme="dark"] .share-hero-ic .icon-svg {
+  color: #ffffff !important;
 }
 
 /* Mi unidad sin selección morada */
