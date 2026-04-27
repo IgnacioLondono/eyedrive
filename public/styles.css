@@ -503,6 +503,13 @@ body::after {
   box-shadow: 0 8px 28px rgba(60, 40, 180, 0.12);
 }
 
+.file-card--selected,
+.file-card[aria-selected="true"] {
+  border-color: rgba(109, 91, 253, 0.65);
+  background: linear-gradient(135deg, rgba(109, 91, 253, 0.18) 0%, rgba(255, 255, 255, 0.9) 100%);
+  box-shadow: 0 0 0 2px rgba(109, 91, 253, 0.3), 0 4px 20px rgba(60, 40, 180, 0.1);
+}
+
 .file-icon {
   width: 2.9rem;
   height: 2.9rem;
@@ -720,6 +727,62 @@ body::after {
   gap: 0.25rem 0.35rem;
   margin: 0 0 0.9rem;
   min-height: 1.5rem;
+}
+
+.share-pick-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin: 0 0 0.9rem;
+  padding: 0.65rem 0.9rem;
+  background: linear-gradient(120deg, rgba(109, 91, 253, 0.18) 0%, rgba(28, 156, 255, 0.12) 100%);
+  border: 1px solid rgba(109, 91, 253, 0.35);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  box-shadow: 0 4px 20px rgba(20, 10, 60, 0.08);
+}
+
+.share-pick-banner[hidden] {
+  display: none;
+}
+
+.share-pick-banner kbd {
+  display: inline-block;
+  font-size: 0.8em;
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  background: var(--panel-deep);
+  border: 1px solid var(--glass-stroke);
+}
+
+.share-pick-banner__text {
+  margin: 0;
+  max-width: 52ch;
+  font-weight: 500;
+  color: var(--text-soft);
+}
+
+.share-pick-banner__text strong {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.share-pick-banner__cancel {
+  flex-shrink: 0;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.86rem;
+}
+
+.content--share-pick .file-card:not(.folder) {
+  opacity: 0.72;
+}
+
+.content--share-pick .file-card.folder {
+  box-shadow: 0 0 0 1px rgba(109, 91, 253, 0.35) inset;
 }
 
 .breadcrumb .crumb {

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>eyedcomundrive</title>
+    <title>eyedrive</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -17,7 +17,7 @@
       <aside class="sidebar">
         <div class="brand">
           <span class="brand-icon" id="brandIcon" aria-hidden="true"></span>
-          <h1>eyedcomundrive</h1>
+          <h1>eyedrive</h1>
         </div>
         <div class="actions">
           <button id="uploadBtn" class="btn-primary btn-ic" type="button">
@@ -66,6 +66,16 @@
 
         <nav id="breadcrumb" class="breadcrumb" aria-label="Ruta"></nav>
 
+        <div id="sharePickBanner" class="share-pick-banner" role="status" hidden>
+          <p class="share-pick-banner__text">
+            <strong>Modo compartir</strong> — toca <strong>una carpeta</strong> para generar su enlace. Los
+            archivos no se pueden compartir así. <kbd>Esc</kbd> para salir.
+          </p>
+          <button type="button" id="sharePickCancelBtn" class="btn-secondary share-pick-banner__cancel">
+            Cancelar
+          </button>
+        </div>
+
         <section id="dropzone" class="dropzone" tabindex="0">
           <div class="dropzone-icon" id="icDropzone" aria-hidden="true"></div>
           <div class="dropzone-text">
@@ -90,18 +100,13 @@
                 <span class="btn-icon" id="icPickFiles" aria-hidden="true"></span>
                 <span class="btn-text">Elegir archivos</span>
               </button>
-              <button
-                type="button"
-                id="shareCurrentFolderBtn"
-                class="btn-secondary btn-ic share-current-btn"
-                hidden
-              >
+              <button type="button" id="shareCurrentFolderBtn" class="btn-secondary btn-ic share-current-btn">
                 <span class="btn-icon" id="icShareCurrent" aria-hidden="true"></span>
-                <span class="btn-text">Compartir esta carpeta</span>
+                <span class="btn-text" id="shareCurrentFolderBtnText">Compartir carpeta</span>
               </button>
             </div>
           </div>
-          <div id="fileGrid" class="file-grid"></div>
+          <div id="fileGrid" class="file-grid" role="listbox" aria-multiselectable="true" aria-label="Archivos y carpetas"></div>
           <p id="emptyState" class="empty-state">
             <span class="empty-illu" id="icEmpty" aria-hidden="true"></span>
             No hay nada en esta carpeta. Sube archivos o crea una carpeta.
@@ -116,9 +121,8 @@
         <h2 class="share-dialog-title">Compartir carpetas</h2>
       </div>
       <p class="share-dialog-text">
-        Solo quien tenga el enlace podrá ver esta carpeta y su contenido. No ve el resto de tu unidad.
-        Para abrirlo desde internet a menudo hace falta exponer el puerto o un túnel (VPN, Cloudflare Tunnel,
-        etc.); eso lo configuras tú en el router o en el servicio.
+        Solo quien tenga el enlace podrá ver esta carpeta y su contenido. No ve el resto de tu unidad. Copia el
+        enlace y pásaselo a quien tú quieras.
       </p>
       <input id="shareUrlInput" class="share-url-input" type="text" readonly value="" />
       <div class="share-dialog-actions">
@@ -135,7 +139,7 @@
     </dialog>
 
     <template id="fileCardTemplate">
-      <article class="file-card" tabindex="0">
+      <article class="file-card" role="option" tabindex="0">
         <div class="file-icon" aria-hidden="true"></div>
         <div class="file-meta">
           <p class="file-name"></p>

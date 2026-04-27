@@ -22,6 +22,10 @@ const shareCurrentFolderBtn = document.getElementById("shareCurrentFolderBtn");
 const contextMenu = document.getElementById("contextMenu");
 const mainContent = document.querySelector("main.content");
 const sidebar = document.querySelector("aside.sidebar");
+const sharePickBanner = document.getElementById("sharePickBanner");
+const sharePickCancelBtn = document.getElementById("sharePickCancelBtn");
+/** En Mi unidad: el usuario elige qué carpeta compartir */
+let sharePickMode = false;
 
 /** @type {{ url: string, name: string }} */
 let lastShare = { url: "", name: "" };
@@ -54,6 +58,119 @@ function initDecorIcons() {
 let pathSegments = [];
 /** @type {any[]} */
 let allItems = [];
+/** Ids de elementos seleccionados (string) */
+const selectedItemIds = new Set();
+/** Para Mayús+clic: rango de selección en la lista visible */
+let lastSelectionAnchorIndex = -1;
+
+function getVisibleItemList() {
+  const term = searchInput.value.trim().toLowerCase();
+  return term
+    ? allItems.filter((item) => item.name.toLowerCase().includes(term))
+    : allItems;
+}
+
+function clearSelectionStateOnly() {
+  selectedItemIds.clear();
+  lastSelectionAnchorIndex = -1;
+}
+
+function clearSelection() {
+  clearSelectionStateOnly();
+  applySearchFilter();
+}
+
+function pruneSelection() {
+  const valid = new Set(allItems.map((x) => String(x.id)));
+  for (const id of [...selectedItemIds]) {
+    if (!valid.has(id)) selectedItemIds.delete(id);
+  }
+}
+
+/**
+ * @param {string|number} id
+ */
+function toggleItemIdSelection(id) {
+  const s = String(id);
+  if (selectedItemIds.has(s)) selectedItemIds.delete(s);
+  else selectedItemIds.add(s);
+  applySearchFilter();
+}
+
+/**
+ * @param {any} item
+ * @param {number} itemIndex
+ */
+function selectOnlyAndAnchor(item, itemIndex) {
+  selectedItemIds.clear();
+  selectedItemIds.add(String(item.id));
+  lastSelectionAnchorIndex = itemIndex;
+  applySearchFilter();
+}
+
+/**
+ * @param {any} item
+ * @param {number} itemIndex
+ */
+function addToSelectionWithAnchor(item, itemIndex) {
+  selectedItemIds.add(String(item.id));
+  lastSelectionAnchorIndex = itemIndex;
+  applySearchFilter();
+}
+
+function selectAllVisible() {
+  const list = getVisibleItemList();
+  for (const it of list) {
+    selectedItemIds.add(String(it.id));
+  }
+  if (list.length) lastSelectionAnchorIndex = 0;
+  applySearchFilter();
+}
+
+function getSelectedItems() {
+  return allItems.filter((x) => selectedItemIds.has(String(x.id)));
+}
+
+function getSelectedFileItems() {
+  return allItems.filter(
+    (x) => x.itemType === "file" && selectedItemIds.has(String(x.id))
+  );
+}
+
+async function removeItemsByIds(ids) {
+  if (!ids.length) return;
+  const n = ids.length;
+  const msg =
+    n === 1
+      ? "¿Eliminar? Si es una carpeta, se borrará todo su contenido."
+      : `¿Eliminar ${n} elementos? Las carpetas borrarán todo su contenido.`;
+  if (!window.confirm(msg)) return;
+  let failed = 0;
+  for (const id of ids) {
+    try {
+      const res = await fetch(`/api/items/${id}`, { method: "DELETE" });
+      if (!res.ok && res.status !== 404) failed += 1;
+    } catch {
+      failed += 1;
+    }
+  }
+  clearSelectionStateOnly();
+  await loadItems();
+  if (failed) alert(`No se pudieron eliminar ${failed} elemento(s).`);
+}
+
+function downloadSelectedFileItems() {
+  const files = getSelectedFileItems();
+  if (!files.length) {
+    alert("En la selección no hay archivos (solo carpetas o nada).");
+    return;
+  }
+  files.forEach((f, i) => {
+    setTimeout(() => {
+      window.open(`${location.origin}/api/files/${f.id}/download`, "_blank", "noopener,noreferrer");
+    }, i * 200);
+  });
+}
 
 function currentParentId() {
   if (!pathSegments.length) return null;
@@ -65,9 +182,64 @@ function currentFolder() {
   return pathSegments[pathSegments.length - 1];
 }
 
-function updateInFolderTools() {
+function newFolderActionLabel() {
+  return pathSegments.length ? "Nueva subcarpeta" : "Nueva carpeta";
+}
+
+function exitSharePickMode() {
+  if (!sharePickMode) {
+    if (mainContent) mainContent.classList.remove("content--share-pick");
+    if (sharePickBanner) sharePickBanner.hidden = true;
+    return;
+  }
+  sharePickMode = false;
+  if (mainContent) mainContent.classList.remove("content--share-pick");
+  if (sharePickBanner) sharePickBanner.hidden = true;
+  updateShareFolderButton();
+}
+
+/**
+ * Sólo en la raíz: activa la elección de carpeta a compartir
+ */
+function enterSharePickMode() {
+  if (pathSegments.length > 0) return;
+  sharePickMode = true;
+  if (mainContent) mainContent.classList.add("content--share-pick");
+  if (sharePickBanner) sharePickBanner.hidden = false;
+  updateShareFolderButton();
+}
+
+function updateShareFolderButton() {
+  const labelEl = document.getElementById("shareCurrentFolderBtnText");
   const inside = pathSegments.length > 0;
-  if (shareCurrentFolderBtn) shareCurrentFolderBtn.hidden = !inside;
+  if (!shareCurrentFolderBtn) return;
+  if (inside) {
+    if (labelEl) labelEl.textContent = "Compartir esta carpeta";
+    shareCurrentFolderBtn.title = "Generar enlace para la carpeta en la que estás";
+    shareCurrentFolderBtn.setAttribute("aria-pressed", "false");
+  } else if (sharePickMode) {
+    if (labelEl) labelEl.textContent = "Cancelar";
+    shareCurrentFolderBtn.title = "Salir del modo de elegir carpeta";
+    shareCurrentFolderBtn.setAttribute("aria-pressed", "true");
+  } else {
+    if (labelEl) labelEl.textContent = "Compartir carpeta";
+    shareCurrentFolderBtn.title = "Elegir una carpeta y generar un enlace de compartir";
+    shareCurrentFolderBtn.setAttribute("aria-pressed", "false");
+  }
+}
+
+function updateInFolderTools() {
+  const t = newFolderBtn?.querySelector(".btn-text");
+  if (t) t.textContent = newFolderActionLabel();
+  if (newFolderBtn) {
+    newFolderBtn.setAttribute(
+      "title",
+      pathSegments.length
+        ? "Crea una subcarpeta dentro de la carpeta abierta"
+        : "Crea una carpeta en la raíz (Mi unidad)"
+    );
+  }
+  updateShareFolderButton();
 }
 
 function itemsQuery() {
@@ -91,6 +263,8 @@ function renderBreadcrumb() {
   root.addEventListener("click", () => {
     pathSegments = [];
     fileInput.value = "";
+    clearSelectionStateOnly();
+    exitSharePickMode();
     loadItems();
   });
   breadcrumb.appendChild(root);
@@ -109,6 +283,7 @@ function renderBreadcrumb() {
     btn.addEventListener("click", () => {
       pathSegments = pathSegments.slice(0, index + 1);
       fileInput.value = "";
+      clearSelectionStateOnly();
       loadItems();
     });
     breadcrumb.appendChild(btn);
@@ -116,16 +291,15 @@ function renderBreadcrumb() {
 }
 
 function applySearchFilter() {
-  const term = searchInput.value.trim().toLowerCase();
-  const filtered = term
-    ? allItems.filter((item) => item.name.toLowerCase().includes(term))
-    : allItems;
+  const filtered = getVisibleItemList();
   renderItems(filtered);
 }
 
 async function loadItems() {
   try {
     allItems = await apiList();
+    pruneSelection();
+    if (pathSegments.length > 0) exitSharePickMode();
     renderBreadcrumb();
     updateInFolderTools();
     applySearchFilter();
@@ -153,6 +327,7 @@ async function openShareFolder(item) {
       name: item.name,
     };
     shareUrlInput.value = lastShare.url;
+    if (sharePickMode) exitSharePickMode();
     shareDialog.showModal();
   } catch (e) {
     console.error(e);
@@ -196,9 +371,20 @@ if (pickFilesBtn) pickFilesBtn.addEventListener("click", openFilePicker);
 
 if (shareCurrentFolderBtn) {
   shareCurrentFolderBtn.addEventListener("click", () => {
-    const folder = currentFolder();
-    if (folder) openShareFolder({ id: folder.id, name: folder.name });
+    if (pathSegments.length > 0) {
+      const folder = currentFolder();
+      if (folder) openShareFolder({ id: folder.id, name: folder.name });
+      return;
+    }
+    if (sharePickMode) {
+      exitSharePickMode();
+    } else {
+      enterSharePickMode();
+    }
   });
+}
+if (sharePickCancelBtn) {
+  sharePickCancelBtn.addEventListener("click", () => exitSharePickMode());
 }
 if (folderTreeBtn && folderInput) {
   folderTreeBtn.addEventListener("click", () => folderInput.click());
@@ -221,7 +407,12 @@ if (folderInput) {
 }
 
 async function createNewFolder() {
-  const name = window.prompt("Nombre de la carpeta:");
+  const where = currentPathLabel();
+  const name = window.prompt(
+    pathSegments.length
+      ? `Nombre de la subcarpeta (se crea en «${where}»):`
+      : `Nombre de la carpeta (se crea en «${where}»):`
+  );
   if (!name || !name.trim()) return;
   const body = { name: name.trim() };
   const pid = currentParentId();
@@ -253,6 +444,8 @@ refreshBtn.addEventListener("click", () => loadItems());
 navDrive.addEventListener("click", (e) => {
   e.preventDefault();
   pathSegments = [];
+  clearSelectionStateOnly();
+  exitSharePickMode();
   loadItems();
 });
 
@@ -437,11 +630,21 @@ function currentPathLabel() {
  * @param {any} item
  */
 function openItem(item) {
+  if (sharePickMode) {
+    if (item.itemType !== "folder") {
+      alert("Solo se pueden compartir carpetas. Toca una carpeta o pulsa Esc para salir.");
+      return;
+    }
+    openShareFolder(item);
+    return;
+  }
   if (item.itemType === "folder") {
+    clearSelectionStateOnly();
     pathSegments = [...pathSegments, { id: item.id, name: item.name }];
     fileInput.value = "";
     loadItems();
   } else {
+    clearSelection();
     window.location.assign(`/api/files/${item.id}/download`);
   }
 }
@@ -490,9 +693,11 @@ async function copyString(text) {
 }
 
 function goToDriveRoot() {
+  exitSharePickMode();
   pathSegments = [];
   fileInput.value = "";
   searchInput.value = "";
+  clearSelectionStateOnly();
   loadItems();
 }
 
@@ -539,9 +744,12 @@ function showContextMenu(clientX, clientY, entries) {
     if (e.id) btn.id = e.id;
     btn.setAttribute("role", "menuitem");
     btn.textContent = e.label || "";
-    btn.disabled = !!e.disabled;
+    const disabled = !!e.disabled;
+    btn.disabled = disabled;
+    btn.setAttribute("aria-disabled", disabled ? "true" : "false");
     btn.addEventListener("click", (ev) => {
       ev.stopPropagation();
+      if (btn.disabled) return;
       const fn = e.run;
       hideContextMenu();
       fn();
@@ -595,13 +803,38 @@ if (contextMenu) {
 function buildBackgroundMenu() {
   const hasSearch = searchInput.value.trim().length > 0;
   const inside = pathSegments.length > 0;
+  const visible = getVisibleItemList();
+  const nSel = selectedItemIds.size;
+  const nFilesSelected = getSelectedFileItems().length;
   const items = [
     { label: "Elegir archivos", run: openFilePicker },
     { label: "Subir carpeta", run: openFolderTreePicker },
-    { label: "Nueva carpeta", run: createNewFolder },
+    { label: newFolderActionLabel(), run: createNewFolder },
     { separator: true },
-    { label: "Actualizar", run: () => loadItems() },
   ];
+  if (visible.length) {
+    items.push({ label: "Seleccionar todos (esta vista)", run: selectAllVisible });
+  }
+  if (nSel) {
+    items.push(
+      { label: "Quitar selección", run: clearSelection },
+      {
+        label: `Descargar archivos de la selección${nFilesSelected ? ` (${nFilesSelected})` : ""}`,
+        run: downloadSelectedFileItems,
+        disabled: nFilesSelected === 0,
+      },
+      {
+        label: nSel > 1 ? `Eliminar ${nSel} seleccionados` : "Eliminar seleccionado",
+        run: () => removeItemsByIds([...selectedItemIds]),
+        danger: true,
+        disabled: false,
+      }
+    );
+  }
+  items.push(
+    { separator: true },
+    { label: "Actualizar", run: () => loadItems() }
+  );
   if (hasSearch) {
     items.push({ label: "Limpiar búsqueda", run: clearSearch });
   }
@@ -621,6 +854,9 @@ function buildBackgroundMenu() {
   } else {
     items.push(
       { separator: true },
+      sharePickMode
+        ? { label: "Cancelar modo compartir", run: exitSharePickMode }
+        : { label: "Compartir una carpeta…", run: enterSharePickMode },
       { label: "Copiar ruta (Mi unidad)", run: () => copyString(currentPathLabel()) }
     );
   }
@@ -640,25 +876,72 @@ function buildBreadcrumbMenu() {
  */
 function buildItemMenu(item) {
   const isFolder = item.itemType === "folder";
+  const idStr = String(item.id);
+  const inSel = selectedItemIds.has(idStr);
+  const nSel = selectedItemIds.size;
+  const list = getVisibleItemList();
+  const idx = list.findIndex((x) => String(x.id) === idStr);
+  const nFilesInSel = getSelectedFileItems().length;
+
+  /** @type {{ id?: string, separator?: boolean, label?: string, run?: () => void, danger?: boolean, disabled?: boolean }[]} */
+  const out = [
+    { label: "Seleccionar solo este", run: () => selectOnlyAndAnchor(item, Math.max(0, idx)) },
+    {
+      label: inSel ? "Quitar de la selección" : "Añadir a la selección",
+      run: () => toggleItemIdSelection(item.id),
+    },
+  ];
+  if (list.length) {
+    out.push({ label: "Seleccionar todos (esta vista)", run: selectAllVisible });
+  }
+  if (nSel) {
+    out.push({ label: "Quitar toda la selección", run: clearSelection });
+  }
+  out.push({ separator: true });
+
+  if (nSel >= 2 && inSel) {
+    out.push(
+      {
+        label: `Descargar archivos de la selección${nFilesInSel ? ` (${nFilesInSel})` : ""}`,
+        run: downloadSelectedFileItems,
+        disabled: nFilesInSel === 0,
+      },
+      {
+        label: `Eliminar ${nSel} seleccionados`,
+        run: () => removeItemsByIds([...selectedItemIds]),
+        danger: true,
+      },
+      { separator: true }
+    );
+  }
+
+  const endSingleDelete = {
+    label: nSel > 1 ? "Eliminar solo este" : "Eliminar",
+    run: () => removeItem(item.id),
+    danger: true,
+  };
+
   if (isFolder) {
-    return [
+    out.push(
       { label: "Abrir", run: () => openItem(item) },
       { label: "Compartir", run: () => openShareFolder(item) },
       { label: "Copiar nombre", run: () => copyString(item.name) },
       { separator: true },
       { label: "Información", run: () => showItemInfo(item) },
-      { label: "Eliminar", run: () => removeItem(item.id), danger: true },
-    ];
+      endSingleDelete
+    );
+  } else {
+    out.push(
+      { label: "Abrir o descargar", run: () => openItem(item) },
+      { label: "Abrir en otra pestaña", run: () => openFileDownloadNewTab(item) },
+      { label: "Copiar enlace de descarga", run: () => copyString(downloadUrlForFile(item)) },
+      { label: "Copiar nombre", run: () => copyString(item.name) },
+      { separator: true },
+      { label: "Información", run: () => showItemInfo(item) },
+      endSingleDelete
+    );
   }
-  return [
-    { label: "Abrir o descargar", run: () => openItem(item) },
-    { label: "Abrir en otra pestaña", run: () => openFileDownloadNewTab(item) },
-    { label: "Copiar enlace de descarga", run: () => copyString(downloadUrlForFile(item)) },
-    { label: "Copiar nombre", run: () => copyString(item.name) },
-    { separator: true },
-    { label: "Información", run: () => showItemInfo(item) },
-    { label: "Eliminar", run: () => removeItem(item.id), danger: true },
-  ];
+  return out;
 }
 
 document.addEventListener("contextmenu", (ev) => {
@@ -699,6 +982,21 @@ document.addEventListener("contextmenu", (ev) => {
     if (t.closest("input, textarea, select")) return;
     ev.preventDefault();
     showContextMenu(ev.clientX, ev.clientY, buildBackgroundMenu());
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (document.querySelector("dialog[open]")) return;
+  if (contextMenu && !contextMenu.hidden) return;
+  if (sharePickMode) {
+    e.preventDefault();
+    exitSharePickMode();
+    return;
+  }
+  if (selectedItemIds.size > 0) {
+    e.preventDefault();
+    clearSelection();
   }
 });
 
@@ -743,15 +1041,45 @@ function renderItems(list) {
     const delIc = delBtn.querySelector(".icon-btn-ic");
     if (delIc && window.EyeIcons) delIc.innerHTML = window.EyeIcons.trash();
 
-    node.dataset.itemId = String(item.id);
+    const idKey = String(item.id);
+    node.dataset.itemId = idKey;
+    if (selectedItemIds.has(idKey)) {
+      node.classList.add("file-card--selected");
+      node.setAttribute("aria-selected", "true");
+    } else {
+      node.setAttribute("aria-selected", "false");
+    }
 
     node.addEventListener("click", (ev) => {
       if (ev.target.closest(".icon-btn") || ev.target.closest(".delete-btn")) return;
+      const list = getVisibleItemList();
+      const myIdx = list.findIndex((x) => String(x.id) === idKey);
+      if (ev.shiftKey && lastSelectionAnchorIndex >= 0 && myIdx >= 0) {
+        ev.preventDefault();
+        const a = Math.min(myIdx, lastSelectionAnchorIndex);
+        const b = Math.max(myIdx, lastSelectionAnchorIndex);
+        for (let j = a; j <= b; j++) {
+          selectedItemIds.add(String(list[j].id));
+        }
+        applySearchFilter();
+        return;
+      }
+      if (ev.ctrlKey || ev.metaKey) {
+        ev.preventDefault();
+        toggleItemIdSelection(item.id);
+        if (myIdx >= 0) lastSelectionAnchorIndex = myIdx;
+        return;
+      }
+      lastSelectionAnchorIndex = myIdx >= 0 ? myIdx : 0;
       openItem(item);
     });
     node.addEventListener("keydown", (ev) => {
       if (ev.key === "Enter" || ev.key === " ") {
         ev.preventDefault();
+        if (ev.ctrlKey || ev.metaKey) {
+          toggleItemIdSelection(item.id);
+          return;
+        }
         openItem(item);
       }
     });

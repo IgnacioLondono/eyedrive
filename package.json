@@ -1,5 +1,5 @@
 {
-  "name": "eyedcomundrive",
+  "name": "eyedrive",
   "version": "1.0.0",
   "private": true,
   "description": "Nube personal con API y PostgreSQL",

@@ -112,7 +112,7 @@ async function isUnderSharedFolder(shareRootId, itemId) {
 }
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, service: "eyedcomundrive" });
+  res.json({ ok: true, service: "eyedrive" });
 });
 
 app.get("/compartir/:token", (req, res) => {
@@ -523,7 +523,7 @@ async function start() {
   await waitForDb();
   await initDb();
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`eyedcomundrive en http://0.0.0.0:${PORT}`);
+    console.log(`eyedrive en http://0.0.0.0:${PORT}`);
   });
 }
 

@@ -1,4 +1,4 @@
-# eyedrive (eyedcomundrive)
+# eyedrive
 
 Nube personal con interfaz web, API en Node.js, PostgreSQL y archivos en volumen Docker.
 
