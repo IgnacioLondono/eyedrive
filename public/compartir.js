@@ -10,9 +10,11 @@ const shareClearSelectionBtn = document.getElementById("shareClearSelectionBtn")
 const shareDownloadSelectedBtn = document.getElementById("shareDownloadSelectedBtn");
 const shareSearchInput = document.getElementById("shareSearchInput");
 const shareDownloadCurrentBtn = document.getElementById("shareDownloadCurrentBtn");
+const shareThemeToggleBtn = document.getElementById("shareThemeToggleBtn");
 
 const TOKEN_RE = /^[0-9a-f]{64}$/i;
 const SHARE_NAV_KEY = `eyedrive.share.path.v1:${token}`;
+const THEME_KEY = "eyedrive.theme.v1";
 /** @type {string} */
 let rootId = "";
 /** @type {string} */
@@ -23,6 +25,21 @@ let pathWithin = [];
 let listCache = [];
 const selectedIds = new Set();
 let selectionAnchorIndex = -1;
+
+function applyTheme(theme) {
+  const t = theme === "dark" ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", t);
+  if (shareThemeToggleBtn) {
+    const txt = shareThemeToggleBtn.querySelector(".btn-text");
+    if (txt) txt.textContent = t === "dark" ? "Modo claro" : "Modo oscuro";
+  }
+}
+
+function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  applyTheme(saved || (prefersDark ? "dark" : "light"));
+}
 
 function normalizeSegments(raw) {
   if (!Array.isArray(raw)) return [];
@@ -312,10 +329,20 @@ if (shareDownloadCurrentBtn) {
   shareDownloadCurrentBtn.addEventListener("click", () => downloadCurrentFolder());
 }
 
+if (shareThemeToggleBtn) {
+  shareThemeToggleBtn.addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+    const next = current === "dark" ? "light" : "dark";
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+  });
+}
+
 window.addEventListener("popstate", (ev) => {
   pathWithin = normalizeSegments(ev.state?.sharePathWithin);
   clearSelectionState();
   loadList();
 });
 
+initTheme();
 init();

@@ -8,6 +8,7 @@ const fileGrid = document.getElementById("fileGrid");
 const fileCount = document.getElementById("fileCount");
 const emptyState = document.getElementById("emptyState");
 const refreshBtn = document.getElementById("refreshBtn");
+const themeToggleBtn = document.getElementById("themeToggleBtn");
 const dropzone = document.getElementById("dropzone");
 const cardTemplate = document.getElementById("fileCardTemplate");
 const breadcrumb = document.getElementById("breadcrumb");
@@ -27,9 +28,25 @@ const sharePickBanner = document.getElementById("sharePickBanner");
 const sharePickCancelBtn = document.getElementById("sharePickCancelBtn");
 /** En Mi unidad: el usuario elige qué carpeta compartir */
 let sharePickMode = false;
+const THEME_KEY = "eyedrive.theme.v1";
 
 /** @type {{ url: string, name: string }} */
 let lastShare = { url: "", name: "" };
+
+function applyTheme(theme) {
+  const t = theme === "dark" ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", t);
+  if (themeToggleBtn) {
+    const txt = themeToggleBtn.querySelector(".btn-text");
+    if (txt) txt.textContent = t === "dark" ? "Modo claro" : "Modo oscuro";
+  }
+}
+
+function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  applyTheme(saved || (prefersDark ? "dark" : "light"));
+}
 
 function initDecorIcons() {
   if (!window.EyeIcons) return;
@@ -1212,6 +1229,15 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") autoRefreshIfStale();
 });
 
+if (themeToggleBtn) {
+  themeToggleBtn.addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+    const next = current === "dark" ? "light" : "dark";
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+  });
+}
+
 async function removeItem(id) {
   if (!window.confirm("¿Eliminar? Si es una carpeta, se borrará todo su contenido.")) return;
   try {
@@ -1320,5 +1346,6 @@ function formatDate(dateString) {
   }).format(new Date(dateString));
 }
 
+initTheme();
 initDecorIcons();
 loadItems();
