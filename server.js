@@ -184,6 +184,38 @@ app.post("/api/folders", async (req, res) => {
   }
 });
 
+app.patch("/api/folders/:id", async (req, res) => {
+  const folderId = String(req.params.id || "");
+  if (!UUID_RE.test(folderId)) {
+    return res.status(400).json({ error: "id no válido" });
+  }
+  const name = String(req.body?.name || "").trim();
+  if (!name) {
+    return res.status(400).json({ error: "Nombre requerido" });
+  }
+  try {
+    const { rows } = await pool.query(
+      `UPDATE items
+       SET name = $2
+       WHERE id = $1::uuid AND type = 'folder'
+       RETURNING id, name`,
+      [folderId, name]
+    );
+    if (!rows.length) {
+      const { rows: exists } = await pool.query(`SELECT id FROM items WHERE id = $1::uuid`, [folderId]);
+      if (!exists.length) return res.status(404).json({ error: "Carpeta no encontrada" });
+      return res.status(400).json({ error: "El elemento no es una carpeta" });
+    }
+    return res.status(200).json({ id: rows[0].id, name: rows[0].name });
+  } catch (e) {
+    if (e.code === "23505") {
+      return res.status(409).json({ error: "Ya existe con ese nombre aquí" });
+    }
+    console.error(e);
+    return res.status(500).json({ error: "Error al renombrar carpeta" });
+  }
+});
+
 function normalizeRelPath(s) {
   if (s == null || typeof s !== "string") return "";
   const t = s.replace(/\\/g, "/").replace(/^\.\/+/g, "");

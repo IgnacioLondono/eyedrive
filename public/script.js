@@ -999,6 +999,39 @@ async function createNewFolder() {
   }
 }
 
+async function renameFolder(item) {
+  if (!item || item.itemType !== "folder") return;
+  const nextName = await appPrompt("Nuevo nombre de la carpeta:", {
+    title: "Renombrar carpeta",
+    defaultValue: item.name || "",
+    placeholder: "Escribe un nombre",
+    okText: "Renombrar",
+  });
+  if (nextName == null) return;
+  const trimmed = String(nextName).trim();
+  if (!trimmed || trimmed === String(item.name || "")) return;
+  try {
+    const res = await fetch(`/api/folders/${item.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: trimmed }),
+    });
+    if (res.status === 409) {
+      await appAlert("Ya hay un archivo o carpeta con ese nombre en esta ubicación.");
+      return;
+    }
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      await appAlert(d.error || "No se pudo renombrar la carpeta.");
+      return;
+    }
+    await loadItems();
+  } catch (e) {
+    console.error(e);
+    await appAlert("No se pudo renombrar la carpeta.");
+  }
+}
+
 newFolderBtn.addEventListener("click", createNewFolder);
 
 searchInput.addEventListener("input", () => applySearchFilter());
@@ -1570,6 +1603,7 @@ function buildItemMenu(item) {
   if (isFolder) {
     out.push(
       { label: "Abrir", run: () => openItem(item) },
+      { label: "Renombrar carpeta…", run: () => renameFolder(item) },
       { label: "Descargar", run: () => downloadItem(item) },
       { label: "Mover…", run: () => moveSingleItem(item) },
       { label: "Compartir", run: () => openShareFolder(item) },
