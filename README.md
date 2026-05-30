@@ -44,11 +44,23 @@ Sin SMTP configurado, los códigos se imprimen en los logs del contenedor (solo 
 
 ## Portainer
 
-1. **Stacks → Add stack**
-2. Sube el `docker-compose.yml` o conecta el repositorio
-3. Añade las variables de `.env.example` en el stack
+1. **Stacks → Add stack** (o edita el stack existente)
+2. Conecta el repositorio `https://github.com/IgnacioLondono/eyedrive` o pega el `docker-compose.yml`
+3. En **Environment variables** del stack, añade (no hace falta archivo `.env`):
 
-Variables útiles: `APP_URL`, `POSTGRES_PASSWORD`, `SMTP_*`.
+| Variable | Ejemplo |
+|----------|---------|
+| `APP_URL` | `https://eyedrive.nicolaslondono.uk` |
+| `POSTGRES_PASSWORD` | una clave segura |
+| `SMTP_HOST` | `smtp.gmail.com` |
+| `SMTP_PORT` | `587` |
+| `SMTP_SECURE` | `false` |
+| `SMTP_USER` | `tu-correo@gmail.com` |
+| `SMTP_PASS` | contraseña de aplicación |
+| `SMTP_FROM` | `Eyedrive <tu-correo@gmail.com>` |
+| `SESSION_DAYS` | `30` |
+
+4. **Deploy the stack**
 
 ## Desarrollo local (sin Docker)
 

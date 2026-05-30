@@ -26,15 +26,20 @@ services:
     restart: unless-stopped
     ports:
       - "9990:3000"
-    env_file:
-      - .env
     environment:
       DATABASE_URL: postgresql://eyed:${POSTGRES_PASSWORD:-eyedpass}@db:5432/eyed
       UPLOAD_DIR: /app/data/uploads
       PORT: "3000"
       MAX_FILE_BYTES: "8589934592"
       MAX_FILES_PER_REQUEST: "20000"
-      APP_URL: ${APP_URL:-http://localhost:9990}
+      APP_URL: ${APP_URL:-https://eyedrive.nicolaslondono.uk}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SESSION_DAYS: ${SESSION_DAYS:-30}
     volumes:
       - /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Nacho/uploads:/app/data/uploads
     depends_on:
