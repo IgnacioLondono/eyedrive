@@ -40,7 +40,7 @@ La aplicación queda en el puerto **9990** (nginx delante de Node.js).
 Internet / Cloudflare → nginx:80 (puerto 9990) → app:3000 → PostgreSQL
 ```
 
-Nginx actúa como proxy inverso: reenvía cabeceras `X-Forwarded-*`, permite subidas grandes (hasta 8 GB) y la app Node solo escucha dentro de la red Docker.
+Nginx actúa como proxy inverso (imagen propia en `nginx/` con la config incluida, sin montar archivos sueltos — compatible con Portainer).
 
 ## Autenticación
 
