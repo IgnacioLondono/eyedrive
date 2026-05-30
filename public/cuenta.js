@@ -42,6 +42,30 @@ async function init() {
     }
   });
 
+  document.getElementById("passwordForm")?.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const currentPassword = document.getElementById("currentPassword").value;
+    const newPassword = document.getElementById("newPassword").value;
+    const confirmPassword = document.getElementById("confirmNewPassword").value;
+    if (newPassword !== confirmPassword) {
+      showMessage("Las contraseñas nuevas no coinciden.", "error");
+      return;
+    }
+    try {
+      const res = await fetch("/api/auth/account/password", {
+        ...fetchOpts,
+        method: "PATCH",
+        body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Error");
+      document.getElementById("passwordForm").reset();
+      showMessage("Contraseña actualizada.", "success");
+    } catch (e) {
+      showMessage(e.message, "error");
+    }
+  });
+
   document.getElementById("logoutBtn")?.addEventListener("click", async () => {
     await fetch("/api/auth/logout", { ...fetchOpts, method: "POST" });
     window.location.href = "/login.html";

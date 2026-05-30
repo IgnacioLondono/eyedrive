@@ -50,8 +50,21 @@ async function initDb() {
       email TEXT NOT NULL UNIQUE,
       email_verified BOOLEAN NOT NULL DEFAULT FALSE,
       display_name TEXT,
+      password_hash TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await pool.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pending_registrations (
+      email TEXT PRIMARY KEY,
+      display_name TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      expires_at TIMESTAMPTZ NOT NULL
     );
   `);
   await pool.query(`

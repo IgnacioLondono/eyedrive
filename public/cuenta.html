@@ -64,6 +64,25 @@
           </section>
 
           <section class="account-section">
+            <h3>Contraseña</h3>
+            <form id="passwordForm" class="auth-form">
+              <div class="auth-field">
+                <label for="currentPassword">Contraseña actual</label>
+                <input id="currentPassword" type="password" required autocomplete="current-password" />
+              </div>
+              <div class="auth-field">
+                <label for="newPassword">Nueva contraseña</label>
+                <input id="newPassword" type="password" required minlength="8" autocomplete="new-password" />
+              </div>
+              <div class="auth-field">
+                <label for="confirmNewPassword">Confirmar nueva contraseña</label>
+                <input id="confirmNewPassword" type="password" required minlength="8" autocomplete="new-password" />
+              </div>
+              <button type="submit" class="btn-primary">Cambiar contraseña</button>
+            </form>
+          </section>
+
+          <section class="account-section">
             <h3>Sesión</h3>
             <p class="auth-subtitle" style="margin-bottom: 16px">
               Cierra sesión en este dispositivo o en todos los dispositivos.
