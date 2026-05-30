@@ -11,7 +11,7 @@ Nube personal con interfaz web, API en Node.js, PostgreSQL y archivos en volumen
 Los datos se guardan en:
 
 ```
-/srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Nacho/
+/srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Eyedrive/
 ├── postgres/   # base de datos
 └── uploads/    # archivos subidos
 ```
@@ -20,9 +20,9 @@ Los datos se guardan en:
 2. Crea las carpetas de datos:
 
 ```bash
-sudo mkdir -p /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Nacho/postgres
-sudo mkdir -p /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Nacho/uploads
-sudo chown -R 999:999 /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Nacho
+sudo mkdir -p /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Eyedrive/postgres
+sudo mkdir -p /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Eyedrive/uploads
+sudo chown -R 999:999 /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Eyedrive
 ```
 
 3. Copia `.env.example` a `.env` y configura SMTP y contraseña de PostgreSQL.

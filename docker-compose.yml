@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eyedpass}
       POSTGRES_DB: eyed
     volumes:
-      - /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Nacho/postgres:/var/lib/postgresql/data
+      - /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Eyedrive/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U eyed -d eyed"]
       interval: 3s
@@ -41,7 +41,7 @@ services:
       SMTP_FROM: ${SMTP_FROM:-}
       SESSION_DAYS: ${SESSION_DAYS:-30}
     volumes:
-      - /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Nacho/uploads:/app/data/uploads
+      - /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Eyedrive/uploads:/app/data/uploads
     depends_on:
       db:
         condition: service_healthy
