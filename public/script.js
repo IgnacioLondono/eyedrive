@@ -288,7 +288,6 @@ function initDecorIcons() {
   fill("icSearch", () => I.search());
   fill("icRefresh", () => I.refresh());
   fill("icNavDrive", () => I.hardDrive());
-  fill("icNavAccount", () => I.user());
   fill("icDropzone", () => I.cloudUpload());
   fill("icContentHead", () => I.hardDrive());
   fill("icPickFiles", () => I.cloudUpload());

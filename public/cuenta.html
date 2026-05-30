@@ -25,16 +25,23 @@
             <span class="side-link-ic" id="icNavDrive" aria-hidden="true"></span>
             <span>Mi unidad</span>
           </a>
-          <a class="side-link active" href="/cuenta.html">
-            <span class="side-link-ic" id="icNavAccount" aria-hidden="true"></span>
-            <span>Mi cuenta</span>
-          </a>
         </nav>
       </aside>
 
       <main class="content">
-        <header class="topbar">
-          <h2 class="content-heading" style="margin: 0">Configuración de cuenta</h2>
+        <header class="topbar account-topbar">
+          <h2 class="content-heading account-topbar__title">Configuración de cuenta</h2>
+          <div class="stats" id="accountTopbarStats">
+            <button
+              id="themeToggleBtn"
+              class="btn-secondary btn-ic theme-toggle-btn icon-only"
+              type="button"
+              title="Cambiar tema"
+              aria-label="Cambiar tema"
+            >
+              <span class="btn-icon" id="icThemeToggle" aria-hidden="true"></span>
+            </button>
+          </div>
         </header>
 
         <div class="account-panel">
@@ -84,10 +91,10 @@
 
           <section class="account-section">
             <h3>Sesión</h3>
-            <p class="auth-subtitle" style="margin-bottom: 16px">
+            <p class="auth-subtitle account-section__hint">
               Cierra sesión en este dispositivo o en todos los dispositivos.
             </p>
-            <div class="auth-actions" style="grid-template-columns: 1fr 1fr">
+            <div class="auth-actions account-session-actions">
               <button type="button" id="logoutBtn" class="btn-secondary">Cerrar sesión</button>
               <button type="button" id="logoutAllBtn" class="btn-secondary">Cerrar en todos</button>
             </div>
