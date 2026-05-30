@@ -1002,7 +1002,7 @@ html[data-theme="dark"] .tree-elbow {
   border-radius: 8px;
   border: 1px solid rgba(109, 91, 253, 0.25);
   margin-bottom: 0.9rem;
-  color: var(--text);
+  color: #0f0f12;
   background: #fff;
 }
 
@@ -1930,6 +1930,12 @@ html[data-theme="dark"] #shareSearchInput {
 html[data-theme="dark"] #searchInput::placeholder,
 html[data-theme="dark"] #shareSearchInput::placeholder {
   color: #9aa7be !important;
+}
+
+html[data-theme="dark"] .share-url-input {
+  background: #1a2130;
+  color: #eaf0fa;
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
 /* Iconos: negro en claro, blanco en oscuro (excepto el ojo) */

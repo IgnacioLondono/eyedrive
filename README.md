@@ -32,7 +32,15 @@ sudo chown -R 999:999 /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2
 docker compose up -d --build
 ```
 
-La aplicación queda en el puerto **9990**.
+La aplicación queda en el puerto **9990** (nginx delante de Node.js).
+
+## Arquitectura
+
+```
+Internet / Cloudflare → nginx:80 (puerto 9990) → app:3000 → PostgreSQL
+```
+
+Nginx actúa como proxy inverso: reenvía cabeceras `X-Forwarded-*`, permite subidas grandes (hasta 8 GB) y la app Node solo escucha dentro de la red Docker.
 
 ## Autenticación
 

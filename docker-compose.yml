@@ -24,8 +24,8 @@ services:
     image: eyedrive:local
     container_name: eyedrive
     restart: unless-stopped
-    ports:
-      - "9990:3000"
+    expose:
+      - "3000"
     environment:
       DATABASE_URL: postgresql://eyed:${POSTGRES_PASSWORD:-eyedpass}@db:5432/eyed
       UPLOAD_DIR: /app/data/uploads
@@ -51,3 +51,15 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: eyedrive-nginx
+    restart: unless-stopped
+    ports:
+      - "9990:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      app:
+        condition: service_healthy
