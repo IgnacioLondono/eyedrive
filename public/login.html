@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Iniciar sesión — Eyedrive</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;0,9..40,800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="auth.css" />
+  </head>
+  <body>
+    <div class="auth-page">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <span class="brand-icon" id="brandIcon" aria-hidden="true"></span>
+          <h1>Eyedrive</h1>
+        </div>
+
+        <div id="authMessage" class="auth-message" hidden></div>
+
+        <div id="loginView">
+          <h2 class="auth-title">Inicia sesión</h2>
+          <p class="auth-subtitle">Te enviaremos un código a tu correo para confirmar que existe.</p>
+          <form id="loginForm" class="auth-form">
+            <div class="auth-field">
+              <label for="loginEmail">Correo electrónico</label>
+              <input id="loginEmail" type="email" required autocomplete="email" placeholder="tu@correo.com" />
+            </div>
+            <div class="auth-actions">
+              <button type="submit" class="btn-primary">Enviar código</button>
+            </div>
+          </form>
+          <div id="loginCodeSection" hidden>
+            <form id="loginCodeForm" class="auth-form">
+              <div class="auth-field">
+                <label for="loginCode">Código de 6 dígitos</label>
+                <input
+                  id="loginCode"
+                  class="auth-code-input"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="\d{6}"
+                  maxlength="6"
+                  required
+                  placeholder="000000"
+                />
+              </div>
+              <div class="auth-actions">
+                <button type="submit" class="btn-primary">Entrar</button>
+                <button type="button" id="loginResendBtn" class="btn-secondary">Reenviar código</button>
+              </div>
+            </form>
+          </div>
+          <p class="auth-switch">
+            ¿No tienes cuenta?
+            <button type="button" id="showRegisterBtn">Crear cuenta</button>
+          </p>
+        </div>
+
+        <div id="registerView" hidden>
+          <h2 class="auth-title">Crear cuenta</h2>
+          <p class="auth-subtitle">Regístrate con un correo real. Te enviaremos un código de confirmación.</p>
+          <form id="registerForm" class="auth-form">
+            <div class="auth-field">
+              <label for="registerEmail">Correo electrónico</label>
+              <input id="registerEmail" type="email" required autocomplete="email" placeholder="tu@correo.com" />
+            </div>
+            <div class="auth-field">
+              <label for="registerName">Nombre (opcional)</label>
+              <input id="registerName" type="text" maxlength="80" autocomplete="name" placeholder="Tu nombre" />
+            </div>
+            <div class="auth-actions">
+              <button type="submit" class="btn-primary">Enviar código</button>
+            </div>
+          </form>
+          <div id="registerCodeSection" hidden>
+            <form id="registerCodeForm" class="auth-form">
+              <div class="auth-field">
+                <label for="registerCode">Código de 6 dígitos</label>
+                <input
+                  id="registerCode"
+                  class="auth-code-input"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="\d{6}"
+                  maxlength="6"
+                  required
+                  placeholder="000000"
+                />
+              </div>
+              <div class="auth-actions">
+                <button type="submit" class="btn-primary">Confirmar y crear cuenta</button>
+                <button type="button" id="registerResendBtn" class="btn-secondary">Reenviar código</button>
+              </div>
+            </form>
+          </div>
+          <p class="auth-switch">
+            ¿Ya tienes cuenta?
+            <button type="button" id="showLoginBtn">Iniciar sesión</button>
+          </p>
+        </div>
+      </div>
+    </div>
+    <script src="icons.js"></script>
+    <script src="login.js"></script>
+  </body>
+</html>

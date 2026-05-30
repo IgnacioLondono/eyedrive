@@ -117,6 +117,12 @@
         24,
         24
       ),
+    user: () =>
+      ico(
+        '<circle cx="12" cy="8" r="3.5"/><path d="M5.5 19.5a6.5 6.5 0 0 1 13 0"/>',
+        20,
+        20
+      ),
     setFileIcon: function (el, type, fileName) {
       if (!el) return;
       el.classList.remove("file-icon--folder", "file-icon--file");

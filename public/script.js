@@ -45,6 +45,9 @@ const sharePickCancelBtn = document.getElementById("sharePickCancelBtn");
 /** En Mi unidad: el usuario elige qué carpeta compartir */
 let sharePickMode = false;
 const THEME_KEY = "eyedrive.theme.v1";
+const API_FETCH = { credentials: "include" };
+const API_JSON = { credentials: "include", headers: { "Content-Type": "application/json" } };
+let currentUser = null;
 
 /** @type {{ url: string, name: string }} */
 let lastShare = { url: "", name: "" };
@@ -270,6 +273,7 @@ function initDecorIcons() {
   fill("icSearch", () => I.search());
   fill("icRefresh", () => I.refresh());
   fill("icNavDrive", () => I.hardDrive());
+  fill("icNavAccount", () => I.user());
   fill("icDropzone", () => I.cloudUpload());
   fill("icContentHead", () => I.hardDrive());
   fill("icPickFiles", () => I.cloudUpload());
@@ -429,7 +433,7 @@ function getSelectedMovableItems() {
 }
 
 async function apiFolderTree() {
-  const res = await fetch("/api/folders/tree");
+  const res = await fetch("/api/folders/tree", API_FETCH);
   if (!res.ok) throw new Error("tree");
   return res.json();
 }
@@ -642,8 +646,8 @@ async function askDestinationFolder(movingItems) {
 
 async function moveItems(itemIds, targetParentId) {
   const res = await fetch("/api/items/move", {
+    ...API_JSON,
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ itemIds, targetParentId }),
   });
   if (res.status === 409) {
@@ -702,7 +706,7 @@ async function removeItemsByIds(ids) {
   let failed = 0;
   for (const id of ids) {
     try {
-      const res = await fetch(`/api/items/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/items/${id}`, { ...API_FETCH, method: "DELETE" });
       if (!res.ok && res.status !== 404) failed += 1;
     } catch {
       failed += 1;
@@ -807,7 +811,11 @@ function itemsQuery() {
 }
 
 async function apiList() {
-  const res = await fetch(`/api/items${itemsQuery()}`);
+  const res = await fetch(`/api/items${itemsQuery()}`, API_FETCH);
+  if (res.status === 401) {
+    window.location.href = "/login.html";
+    throw new Error("No autenticado");
+  }
   if (!res.ok) throw new Error("No se pudo cargar el listado");
   return res.json();
 }
@@ -869,8 +877,8 @@ async function loadItems() {
 async function openShareFolder(item) {
   try {
     const res = await fetch("/api/shares", {
+      ...API_JSON,
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ folderId: item.id }),
     });
     if (!res.ok) {
@@ -983,8 +991,8 @@ async function createNewFolder() {
   if (pid) body.parentId = pid;
   try {
     const res = await fetch("/api/folders", {
+      ...API_JSON,
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     if (res.status === 409) {
@@ -1012,8 +1020,8 @@ async function renameFolder(item) {
   if (!trimmed || trimmed === String(item.name || "")) return;
   try {
     const res = await fetch(`/api/folders/${item.id}`, {
+      ...API_JSON,
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: trimmed }),
     });
     if (res.status === 409) {
@@ -1114,6 +1122,7 @@ function uploadBatchXHR(form, onProgress) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/upload");
+    xhr.withCredentials = true;
     activeUploadController = { xhr, cancelled: false };
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) onProgress(event.loaded, event.total);
@@ -1718,7 +1727,7 @@ if (themeToggleBtn) {
 async function removeItem(id) {
   if (!(await appConfirm("¿Eliminar? Si es una carpeta, se borrará todo su contenido.", "Eliminar"))) return;
   try {
-    const res = await fetch(`/api/items/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/items/${id}`, { ...API_FETCH, method: "DELETE" });
     if (res.status === 404) {
       await appAlert("No encontrado.");
       return;
@@ -1828,4 +1837,70 @@ function formatDate(dateString) {
 
 initTheme();
 initDecorIcons();
-loadItems();
+initAuth().then(() => loadItems());
+
+async function initAuth() {
+  try {
+    const res = await fetch("/api/auth/me", API_FETCH);
+    if (!res.ok) {
+      window.location.href = "/login.html";
+      return;
+    }
+    currentUser = await res.json();
+    renderUserMenu();
+  } catch {
+    window.location.href = "/login.html";
+  }
+}
+
+function userInitials(name, email) {
+  const src = (name || email || "?").trim();
+  const parts = src.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return src.slice(0, 2).toUpperCase();
+}
+
+function renderUserMenu() {
+  const stats = document.querySelector(".stats");
+  if (!stats || !currentUser) return;
+  let menu = document.getElementById("userMenu");
+  if (!menu) {
+    menu = document.createElement("div");
+    menu.id = "userMenu";
+    menu.className = "user-menu";
+    menu.innerHTML = `
+      <button type="button" class="user-menu-btn" id="userMenuBtn" aria-haspopup="true" aria-expanded="false">
+        <span class="user-avatar" id="userAvatar"></span>
+        <span id="userMenuLabel"></span>
+      </button>
+      <div class="user-menu-dropdown" id="userMenuDropdown" hidden>
+        <div class="user-menu-email" id="userMenuEmail"></div>
+        <a href="/cuenta.html">Mi cuenta</a>
+        <button type="button" id="userLogoutBtn">Cerrar sesión</button>
+      </div>`;
+    stats.insertBefore(menu, stats.firstChild);
+    document.getElementById("userMenuBtn")?.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const dd = document.getElementById("userMenuDropdown");
+      const open = dd?.hidden;
+      if (dd) dd.hidden = !open;
+      document.getElementById("userMenuBtn")?.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    document.getElementById("userLogoutBtn")?.addEventListener("click", async () => {
+      await fetch("/api/auth/logout", { ...API_JSON, method: "POST" });
+      window.location.href = "/login.html";
+    });
+    document.addEventListener("click", () => {
+      const dd = document.getElementById("userMenuDropdown");
+      if (dd) dd.hidden = true;
+      document.getElementById("userMenuBtn")?.setAttribute("aria-expanded", "false");
+    });
+  }
+  const label = currentUser.displayName || currentUser.email.split("@")[0];
+  const avatar = document.getElementById("userAvatar");
+  const menuLabel = document.getElementById("userMenuLabel");
+  const menuEmail = document.getElementById("userMenuEmail");
+  if (avatar) avatar.textContent = userInitials(currentUser.displayName, currentUser.email);
+  if (menuLabel) menuLabel.textContent = label;
+  if (menuEmail) menuEmail.textContent = currentUser.email;
+}

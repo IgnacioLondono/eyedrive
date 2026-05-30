@@ -1,29 +1,55 @@
 # eyedrive
 
-Nube personal con interfaz web, API en Node.js, PostgreSQL y archivos en volumen Docker.
+Nube personal con interfaz web, API en Node.js, PostgreSQL y archivos en volumen Docker. Cada usuario tiene su propia unidad aislada.
 
 ## Requisitos
 
 - Docker y Docker Compose (o Portainer con soporte para **Stacks** desde `docker-compose.yml`).
 
-## Puesta en marcha
+## Puesta en marcha en el servidor
 
-En la raíz del repositorio:
+Los datos se guardan en:
+
+```
+/srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Nacho/
+├── postgres/   # base de datos
+└── uploads/    # archivos subidos
+```
+
+1. Clona o copia el proyecto al servidor.
+2. Crea las carpetas de datos:
+
+```bash
+sudo mkdir -p /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Nacho/postgres
+sudo mkdir -p /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Nacho/uploads
+sudo chown -R 999:999 /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Nacho
+```
+
+3. Copia `.env.example` a `.env` y configura SMTP y contraseña de PostgreSQL.
+4. Levanta los contenedores:
 
 ```bash
 docker compose up -d --build
 ```
 
-La aplicación queda en el puerto **9990** (mapea `9990:3000` en el contenedor `app`).
+La aplicación queda en el puerto **9990**.
+
+## Autenticación
+
+- **Registro**: el usuario introduce su correo → recibe un código de 6 dígitos → confirma y crea su cuenta.
+- **Inicio de sesión**: mismo flujo con código enviado al correo registrado.
+- **Mi cuenta** (`/cuenta.html`): cambiar nombre, ver correo, cerrar sesión.
+
+Sin SMTP configurado, los códigos se imprimen en los logs del contenedor (solo para desarrollo).
 
 ## Portainer
 
 1. **Stacks → Add stack**
-2. **Repository**: URL `https://github.com/IgnacioLondono/eyedrive` y rama `main` (o sube el `docker-compose.yml` manualmente)
-3. **Build** debe ejecutarse en el contexto que incluya `Dockerfile` y el código (clon del repo o subida al host)
+2. Sube el `docker-compose.yml` o conecta el repositorio
+3. Añade las variables de `.env.example` en el stack
 
-Variables útiles: ver `docker-compose.yml` (`MAX_FILE_BYTES`, `MAX_FILES_PER_REQUEST`, credenciales de PostgreSQL). **Cambia la contraseña** de la base de datos en entornos expuestos.
+Variables útiles: `APP_URL`, `POSTGRES_PASSWORD`, `SMTP_*`.
 
 ## Desarrollo local (sin Docker)
 
-Necesitas Node.js 18+ y PostgreSQL. Copia el proyecto, instala dependencias (`npm install`), configura `DATABASE_URL` y ejecuta `npm start`.
+Necesitas Node.js 18+ y PostgreSQL. Instala dependencias (`npm install`), configura `DATABASE_URL` y `.env`, y ejecuta `npm start`.

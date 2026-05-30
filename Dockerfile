@@ -8,6 +8,7 @@ COPY package.json package-lock.json* ./
 RUN npm install --omit=dev
 
 COPY server.js ./
+COPY lib ./lib
 COPY public ./public
 
 RUN mkdir -p /app/data/uploads

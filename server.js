@@ -2,9 +2,12 @@ const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 const express = require("express");
+const cookieParser = require("cookie-parser");
 const multer = require("multer");
 const { Pool } = require("pg");
 const archiver = require("archiver");
+const { sendVerificationCode } = require("./lib/email");
+const { mountAuthRoutes, requireAuth } = require("./lib/auth");
 
 const PORT = Number(process.env.PORT) || 3000;
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, "data", "uploads");
@@ -25,6 +28,7 @@ const pool = new Pool({ connectionString: DATABASE_URL });
 const app = express();
 
 app.use(express.json({ limit: "2mb" }));
+app.use(cookieParser());
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -41,8 +45,39 @@ function ensureUploadDir() {
 
 async function initDb() {
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      email TEXT NOT NULL UNIQUE,
+      email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+      display_name TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS email_codes (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      email TEXT NOT NULL,
+      code TEXT NOT NULL,
+      purpose TEXT NOT NULL CHECK (purpose IN ('register', 'login')),
+      expires_at TIMESTAMPTZ NOT NULL,
+      used_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token TEXT NOT NULL UNIQUE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS items (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
       parent_id UUID REFERENCES items(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
       type TEXT NOT NULL CHECK (type IN ('file', 'folder')),
@@ -53,8 +88,12 @@ async function initDb() {
     );
   `);
   await pool.query(`
-    CREATE UNIQUE INDEX IF NOT EXISTS items_unique_sibling_name
-    ON items (COALESCE(parent_id, '00000000-0000-0000-0000-000000000000'::uuid), name);
+    ALTER TABLE items ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE CASCADE;
+  `);
+  await pool.query(`DROP INDEX IF EXISTS items_unique_sibling_name;`);
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS items_unique_sibling_name_user
+    ON items (user_id, COALESCE(parent_id, '00000000-0000-0000-0000-000000000000'::uuid), name);
   `);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS shares (
@@ -64,6 +103,13 @@ async function initDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+}
+
+async function itemBelongsToUser(itemId, userId) {
+  if (!itemId) return true;
+  const { rows } = await pool.query(`SELECT user_id FROM items WHERE id = $1::uuid`, [itemId]);
+  if (!rows.length) return false;
+  return String(rows[0].user_id) === String(userId);
 }
 
 async function waitForDb() {
@@ -112,6 +158,8 @@ async function isUnderSharedFolder(shareRootId, itemId) {
   return Boolean(rows[0].ok);
 }
 
+mountAuthRoutes(app, pool, { sendVerificationCode });
+
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, service: "eyedrive" });
 });
@@ -123,17 +171,20 @@ app.get("/compartir/:token", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "compartir.html"));
 });
 
-app.get("/api/items", async (req, res) => {
+app.get("/api/items", requireAuth, async (req, res) => {
   const p = toParentUuid(req.query.parentId);
   if (!p.ok) return res.status(400).json({ error: p.error });
   const parentId = p.value;
+  if (parentId && !(await itemBelongsToUser(parentId, req.user.id))) {
+    return res.status(404).json({ error: "Carpeta no encontrada" });
+  }
   try {
     const { rows } = await pool.query(
       `SELECT id, name, type, size, created_at, mime_type
        FROM items
-       WHERE parent_id IS NOT DISTINCT FROM $1::uuid
+       WHERE user_id = $2::uuid AND parent_id IS NOT DISTINCT FROM $1::uuid
        ORDER BY type DESC, lower(name)`,
-      [parentId]
+      [parentId, req.user.id]
     );
     res.json(
       rows.map((r) => ({
@@ -151,7 +202,7 @@ app.get("/api/items", async (req, res) => {
   }
 });
 
-app.post("/api/folders", async (req, res) => {
+app.post("/api/folders", requireAuth, async (req, res) => {
   const name = (req.body?.name || "").trim();
   const pr = toParentUuid(req.body?.parentId);
   if (!pr.ok) return res.status(400).json({ error: pr.error });
@@ -159,12 +210,15 @@ app.post("/api/folders", async (req, res) => {
   if (!name) {
     return res.status(400).json({ error: "Nombre requerido" });
   }
+  if (parentId && !(await itemBelongsToUser(parentId, req.user.id))) {
+    return res.status(404).json({ error: "Carpeta no encontrada" });
+  }
   try {
     const { rows } = await pool.query(
-      `INSERT INTO items (parent_id, name, type, size)
-       VALUES ($1::uuid, $2, 'folder', 0)
+      `INSERT INTO items (user_id, parent_id, name, type, size)
+       VALUES ($2::uuid, $1::uuid, $3, 'folder', 0)
        RETURNING id, name, type, size, created_at, mime_type`,
-      [parentId, name]
+      [parentId, req.user.id, name]
     );
     const r = rows[0];
     res.status(201).json({
@@ -184,7 +238,7 @@ app.post("/api/folders", async (req, res) => {
   }
 });
 
-app.patch("/api/folders/:id", async (req, res) => {
+app.patch("/api/folders/:id", requireAuth, async (req, res) => {
   const folderId = String(req.params.id || "");
   if (!UUID_RE.test(folderId)) {
     return res.status(400).json({ error: "id no válido" });
@@ -193,13 +247,16 @@ app.patch("/api/folders/:id", async (req, res) => {
   if (!name) {
     return res.status(400).json({ error: "Nombre requerido" });
   }
+  if (!(await itemBelongsToUser(folderId, req.user.id))) {
+    return res.status(404).json({ error: "Carpeta no encontrada" });
+  }
   try {
     const { rows } = await pool.query(
       `UPDATE items
        SET name = $2
-       WHERE id = $1::uuid AND type = 'folder'
+       WHERE id = $1::uuid AND user_id = $3::uuid AND type = 'folder'
        RETURNING id, name`,
-      [folderId, name]
+      [folderId, name, req.user.id]
     );
     if (!rows.length) {
       const { rows: exists } = await pool.query(`SELECT id FROM items WHERE id = $1::uuid`, [folderId]);
@@ -231,32 +288,35 @@ function splitRelToFoldersAndFile(norm) {
   return { folders: parts.filter(Boolean), fileName };
 }
 
-async function findOrCreateFolderDb(client, parentId, folderName) {
+async function findOrCreateFolderDb(client, userId, parentId, folderName) {
   const { rows: ex } = await client.query(
     `SELECT id FROM items
-     WHERE parent_id IS NOT DISTINCT FROM $1::uuid AND name = $2 AND type = 'folder' LIMIT 1`,
-    [parentId, folderName]
+     WHERE user_id = $3::uuid AND parent_id IS NOT DISTINCT FROM $1::uuid AND name = $2 AND type = 'folder' LIMIT 1`,
+    [parentId, folderName, userId]
   );
   if (ex.length) return ex[0].id;
   const { rows } = await client.query(
-    `INSERT INTO items (parent_id, name, type, size) VALUES ($1::uuid, $2, 'folder', 0) RETURNING id`,
-    [parentId, folderName]
+    `INSERT INTO items (user_id, parent_id, name, type, size) VALUES ($3::uuid, $1::uuid, $2, 'folder', 0) RETURNING id`,
+    [parentId, folderName, userId]
   );
   return rows[0].id;
 }
 
-async function ensureFolderChainDb(client, baseParentId, folderNames) {
+async function ensureFolderChainDb(client, userId, baseParentId, folderNames) {
   let pid = baseParentId;
   for (const name of folderNames) {
-    pid = await findOrCreateFolderDb(client, pid, name);
+    pid = await findOrCreateFolderDb(client, userId, pid, name);
   }
   return pid;
 }
 
-app.post("/api/upload", upload.array("files", MAX_FILES_PER_REQUEST), async (req, res) => {
+app.post("/api/upload", requireAuth, upload.array("files", MAX_FILES_PER_REQUEST), async (req, res) => {
   const pr = toParentUuid(req.body?.parentId);
   if (!pr.ok) return res.status(400).json({ error: pr.error });
   const baseParentId = pr.value;
+  if (baseParentId && !(await itemBelongsToUser(baseParentId, req.user.id))) {
+    return res.status(404).json({ error: "Carpeta no encontrada" });
+  }
   const files = req.files || [];
   if (!files.length) {
     return res.status(400).json({ error: "Sin archivos" });
@@ -294,15 +354,15 @@ app.post("/api/upload", upload.array("files", MAX_FILES_PER_REQUEST), async (req
           fs.unlink(path.join(UPLOAD_DIR, f.filename), () => {});
           continue;
         }
-        targetParent = await ensureFolderChainDb(client, baseParentId, folders);
+        targetParent = await ensureFolderChainDb(client, req.user.id, baseParentId, folders);
         displayName = fileName;
       }
 
       const { rows } = await client.query(
-        `INSERT INTO items (parent_id, name, type, size, storage_key, mime_type)
-         VALUES ($1::uuid, $2, 'file', $3, $4, $5)
+        `INSERT INTO items (user_id, parent_id, name, type, size, storage_key, mime_type)
+         VALUES ($6::uuid, $1::uuid, $2, 'file', $3, $4, $5)
          RETURNING id, name, type, size, created_at, mime_type`,
-        [targetParent, displayName, f.size, f.filename, f.mimetype || null]
+        [targetParent, displayName, f.size, f.filename, f.mimetype || null, req.user.id]
       );
       const r = rows[0];
       created.push({
@@ -407,15 +467,18 @@ async function streamFolderZip(res, folderId, folderName) {
   await archive.finalize();
 }
 
-app.get("/api/items/:id/download", async (req, res) => {
+app.get("/api/items/:id/download", requireAuth, async (req, res) => {
   if (!UUID_RE.test(req.params.id)) {
     return res.status(400).end();
   }
   const { id } = req.params;
+  if (!(await itemBelongsToUser(id, req.user.id))) {
+    return res.status(404).end();
+  }
   try {
     const { rows } = await pool.query(
-      `SELECT id, name, type, storage_key, mime_type FROM items WHERE id = $1::uuid`,
-      [id]
+      `SELECT id, name, type, storage_key, mime_type FROM items WHERE id = $1::uuid AND user_id = $2::uuid`,
+      [id, req.user.id]
     );
     if (!rows.length) return res.status(404).end();
     const row = rows[0];
@@ -440,15 +503,18 @@ app.get("/api/items/:id/download", async (req, res) => {
   }
 });
 
-app.get("/api/files/:id/download", async (req, res) => {
+app.get("/api/files/:id/download", requireAuth, async (req, res) => {
   if (!UUID_RE.test(req.params.id)) {
     return res.status(400).end();
   }
   const { id } = req.params;
+  if (!(await itemBelongsToUser(id, req.user.id))) {
+    return res.status(404).end();
+  }
   try {
     const { rows } = await pool.query(
-      `SELECT name, type, storage_key, mime_type FROM items WHERE id = $1::uuid`,
-      [id]
+      `SELECT name, type, storage_key, mime_type FROM items WHERE id = $1::uuid AND user_id = $2::uuid`,
+      [id, req.user.id]
     );
     if (!rows.length || rows[0].type !== "file" || !rows[0].storage_key) {
       return res.status(404).end();
@@ -470,15 +536,18 @@ app.get("/api/files/:id/download", async (req, res) => {
   }
 });
 
-app.post("/api/shares", async (req, res) => {
+app.post("/api/shares", requireAuth, async (req, res) => {
   const folderId = req.body?.folderId;
   if (!UUID_RE.test(String(folderId || ""))) {
     return res.status(400).json({ error: "Carpeta no válida" });
   }
+  if (!(await itemBelongsToUser(folderId, req.user.id))) {
+    return res.status(404).json({ error: "Carpeta no encontrada" });
+  }
   try {
     const { rows: fr } = await pool.query(
-      `SELECT id, name, type FROM items WHERE id = $1::uuid`,
-      [folderId]
+      `SELECT id, name, type FROM items WHERE id = $1::uuid AND user_id = $2::uuid`,
+      [folderId, req.user.id]
     );
     if (!fr.length || fr[0].type !== "folder") {
       return res.status(404).json({ error: "Carpeta no encontrada" });
@@ -648,13 +717,14 @@ app.get("/api/share/:token/item/:id/download", async (req, res) => {
   }
 });
 
-app.get("/api/folders/tree", async (_req, res) => {
+app.get("/api/folders/tree", requireAuth, async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT id, parent_id, name
        FROM items
-       WHERE type = 'folder'
-       ORDER BY lower(name)`
+       WHERE user_id = $1::uuid AND type = 'folder'
+       ORDER BY lower(name)`,
+      [req.user.id]
     );
     res.json(
       rows.map((r) => ({
@@ -669,7 +739,7 @@ app.get("/api/folders/tree", async (_req, res) => {
   }
 });
 
-app.post("/api/items/move", async (req, res) => {
+app.post("/api/items/move", requireAuth, async (req, res) => {
   const idsRaw = Array.isArray(req.body?.itemIds) ? req.body.itemIds : [];
   const itemIds = [...new Set(idsRaw.map((x) => String(x || "").trim()))].filter((x) => UUID_RE.test(x));
   if (!itemIds.length) {
@@ -678,6 +748,9 @@ app.post("/api/items/move", async (req, res) => {
   const pr = toParentUuid(req.body?.targetParentId);
   if (!pr.ok) return res.status(400).json({ error: pr.error });
   const targetParentId = pr.value;
+  if (targetParentId && !(await itemBelongsToUser(targetParentId, req.user.id))) {
+    return res.status(404).json({ error: "Carpeta destino no encontrada" });
+  }
 
   let client;
   try {
@@ -685,8 +758,8 @@ app.post("/api/items/move", async (req, res) => {
     await client.query("BEGIN");
 
     const { rows: targetRows } = await client.query(
-      `SELECT id, type FROM items WHERE id IS NOT DISTINCT FROM $1::uuid`,
-      [targetParentId]
+      `SELECT id, type FROM items WHERE id IS NOT DISTINCT FROM $1::uuid AND user_id = $2::uuid`,
+      [targetParentId, req.user.id]
     );
     if (targetParentId && (!targetRows.length || targetRows[0].type !== "folder")) {
       await client.query("ROLLBACK");
@@ -694,8 +767,8 @@ app.post("/api/items/move", async (req, res) => {
     }
 
     const { rows: srcRows } = await client.query(
-      `SELECT id, parent_id, name, type FROM items WHERE id = ANY($1::uuid[])`,
-      [itemIds]
+      `SELECT id, parent_id, name, type FROM items WHERE id = ANY($1::uuid[]) AND user_id = $2::uuid`,
+      [itemIds, req.user.id]
     );
     if (srcRows.length !== itemIds.length) {
       await client.query("ROLLBACK");
@@ -761,27 +834,33 @@ app.post("/api/items/move", async (req, res) => {
   }
 });
 
-app.delete("/api/items/:id", async (req, res) => {
+app.delete("/api/items/:id", requireAuth, async (req, res) => {
   if (!UUID_RE.test(req.params.id)) {
     return res.status(400).json({ error: "id no válido" });
   }
   const { id } = req.params;
+  if (!(await itemBelongsToUser(id, req.user.id))) {
+    return res.status(404).json({ error: "No encontrado" });
+  }
   try {
     const { rows } = await pool.query(
       `WITH RECURSIVE tree AS (
-         SELECT id FROM items WHERE id = $1::uuid
+         SELECT id FROM items WHERE id = $1::uuid AND user_id = $2::uuid
          UNION ALL
          SELECT i.id FROM items i INNER JOIN tree t ON i.parent_id = t.id
        )
        SELECT storage_key FROM items
        WHERE id IN (SELECT id FROM tree) AND type = 'file' AND storage_key IS NOT NULL`,
-      [id]
+      [id, req.user.id]
     );
     for (const row of rows) {
       const p = path.join(UPLOAD_DIR, row.storage_key);
       fs.unlink(p, () => {});
     }
-    const del = await pool.query(`DELETE FROM items WHERE id = $1::uuid`, [id]);
+    const del = await pool.query(`DELETE FROM items WHERE id = $1::uuid AND user_id = $2::uuid`, [
+      id,
+      req.user.id,
+    ]);
     if (del.rowCount === 0) {
       return res.status(404).json({ error: "No encontrado" });
     }

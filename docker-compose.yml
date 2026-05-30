@@ -4,13 +4,13 @@ version: "3.8"
 services:
   db:
     image: postgres:16-alpine
-    container_name: eyedcomundrive-db
+    container_name: eyedrive-db
     environment:
       POSTGRES_USER: eyed
-      POSTGRES_PASSWORD: eyedpass
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eyedpass}
       POSTGRES_DB: eyed
     volumes:
-      - eyed_pgdb:/var/lib/postgresql/data
+      - /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Nacho/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U eyed -d eyed"]
       interval: 3s
@@ -21,19 +21,22 @@ services:
 
   app:
     build: .
-    image: eyedcomundrive:local
-    container_name: eyedcomundrive
+    image: eyedrive:local
+    container_name: eyedrive
     restart: unless-stopped
     ports:
       - "9990:3000"
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql://eyed:eyedpass@db:5432/eyed
+      DATABASE_URL: postgresql://eyed:${POSTGRES_PASSWORD:-eyedpass}@db:5432/eyed
       UPLOAD_DIR: /app/data/uploads
       PORT: "3000"
       MAX_FILE_BYTES: "8589934592"
       MAX_FILES_PER_REQUEST: "20000"
+      APP_URL: ${APP_URL:-http://localhost:9990}
     volumes:
-      - eyed_files:/app/data
+      - /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Nacho/uploads:/app/data/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -43,7 +46,3 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-
-volumes:
-  eyed_pgdb:
-  eyed_files:
