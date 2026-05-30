@@ -1,5 +1,3 @@
-const fetchOpts = { credentials: "include", headers: { "Content-Type": "application/json" } };
-
 function showMessage(text, type = "info") {
   const el = document.getElementById("accountMessage");
   if (!el) return;
@@ -9,9 +7,9 @@ function showMessage(text, type = "info") {
 }
 
 async function loadAccount() {
-  const res = await fetch("/api/auth/me", { credentials: "include" });
+  const res = await fetch("/api/auth/me", window.EyeAuth.fetchOpts());
   if (!res.ok) {
-    window.location.href = "/login.html";
+    window.location.replace("/login.html");
     return null;
   }
   return res.json();
@@ -29,11 +27,13 @@ async function init() {
     ev.preventDefault();
     const displayName = document.getElementById("displayName").value.trim();
     try {
-      const res = await fetch("/api/auth/account", {
-        ...fetchOpts,
-        method: "PATCH",
-        body: JSON.stringify({ displayName }),
-      });
+      const res = await fetch(
+        "/api/auth/account",
+        window.EyeAuth.fetchJsonOpts({
+          method: "PATCH",
+          body: JSON.stringify({ displayName }),
+        })
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error");
       showMessage("Perfil actualizado.", "success");
@@ -52,11 +52,13 @@ async function init() {
       return;
     }
     try {
-      const res = await fetch("/api/auth/account/password", {
-        ...fetchOpts,
-        method: "PATCH",
-        body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
-      });
+      const res = await fetch(
+        "/api/auth/account/password",
+        window.EyeAuth.fetchJsonOpts({
+          method: "PATCH",
+          body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+        })
+      );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Error");
       document.getElementById("passwordForm").reset();
@@ -67,13 +69,15 @@ async function init() {
   });
 
   document.getElementById("logoutBtn")?.addEventListener("click", async () => {
-    await fetch("/api/auth/logout", { ...fetchOpts, method: "POST" });
-    window.location.href = "/login.html";
+    await fetch("/api/auth/logout", window.EyeAuth.fetchJsonOpts({ method: "POST" }));
+    window.EyeAuth.clearSessionToken();
+    window.location.replace("/login.html");
   });
 
   document.getElementById("logoutAllBtn")?.addEventListener("click", async () => {
-    await fetch("/api/auth/sessions", { ...fetchOpts, method: "DELETE" });
-    window.location.href = "/login.html";
+    await fetch("/api/auth/sessions", window.EyeAuth.fetchJsonOpts({ method: "DELETE" }));
+    window.EyeAuth.clearSessionToken();
+    window.location.replace("/login.html");
   });
 }
 

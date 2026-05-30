@@ -2,7 +2,6 @@ const authMessage = document.getElementById("authMessage");
 const confirmForm = document.getElementById("confirmForm");
 const confirmSubmitBtn = document.getElementById("confirmSubmitBtn");
 const confirmEmailEl = document.getElementById("confirmEmail");
-const fetchOpts = { credentials: "include", headers: { "Content-Type": "application/json" } };
 
 const pendingEmail = sessionStorage.getItem("eyedrive.pendingEmail");
 
@@ -27,8 +26,8 @@ function hideMessage() {
 
 async function checkAlreadyLoggedIn() {
   try {
-    const res = await fetch("/api/auth/me", { credentials: "include" });
-    if (res.ok) window.location.href = "/";
+    const res = await fetch("/api/auth/me", window.EyeAuth.fetchOpts());
+    if (res.ok) window.location.replace("/");
   } catch {}
 }
 
@@ -43,14 +42,17 @@ confirmForm?.addEventListener("submit", async (ev) => {
   }
 
   try {
-    const res = await fetch("/api/auth/register/confirm", {
-      ...fetchOpts,
-      method: "POST",
-      body: JSON.stringify({ email: pendingEmail, code }),
-    });
+    const res = await fetch(
+      "/api/auth/register/confirm",
+      window.EyeAuth.fetchJsonOpts({
+        method: "POST",
+        body: JSON.stringify({ email: pendingEmail, code }),
+      })
+    );
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "Código incorrecto");
 
+    window.EyeAuth.applySessionFromResponse(data);
     sessionStorage.removeItem("eyedrive.pendingEmail");
     window.location.replace("/");
   } catch (e) {
@@ -65,11 +67,13 @@ confirmForm?.addEventListener("submit", async (ev) => {
 document.getElementById("resendBtn")?.addEventListener("click", async () => {
   hideMessage();
   try {
-    const res = await fetch("/api/auth/register/resend", {
-      ...fetchOpts,
-      method: "POST",
-      body: JSON.stringify({ email: pendingEmail }),
-    });
+    const res = await fetch(
+      "/api/auth/register/resend",
+      window.EyeAuth.fetchJsonOpts({
+        method: "POST",
+        body: JSON.stringify({ email: pendingEmail }),
+      })
+    );
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "No se pudo reenviar");
     showMessage("Te hemos enviado un código nuevo.", "success");

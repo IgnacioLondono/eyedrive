@@ -45,8 +45,23 @@ const sharePickCancelBtn = document.getElementById("sharePickCancelBtn");
 /** En Mi unidad: el usuario elige qué carpeta compartir */
 let sharePickMode = false;
 const THEME_KEY = "eyedrive.theme.v1";
-const API_FETCH = { credentials: "include" };
-const API_JSON = { credentials: "include", headers: { "Content-Type": "application/json" } };
+const API_FETCH = () =>
+  window.EyeAuth ? window.EyeAuth.fetchOpts() : { credentials: "include" };
+
+function apiJson(method, body) {
+  if (window.EyeAuth) {
+    return window.EyeAuth.fetchJsonOpts({
+      method,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  }
+  return {
+    credentials: "include",
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  };
+}
 let currentUser = null;
 
 /** @type {{ url: string, name: string }} */
@@ -433,7 +448,7 @@ function getSelectedMovableItems() {
 }
 
 async function apiFolderTree() {
-  const res = await fetch("/api/folders/tree", API_FETCH);
+  const res = await fetch("/api/folders/tree", API_FETCH());
   if (!res.ok) throw new Error("tree");
   return res.json();
 }
@@ -645,11 +660,7 @@ async function askDestinationFolder(movingItems) {
 }
 
 async function moveItems(itemIds, targetParentId) {
-  const res = await fetch("/api/items/move", {
-    ...API_JSON,
-    method: "POST",
-    body: JSON.stringify({ itemIds, targetParentId }),
-  });
+  const res = await fetch("/api/items/move", apiJson("POST", { itemIds, targetParentId }));
   if (res.status === 409) {
     const d = await res.json().catch(() => ({}));
     await appAlert(d.error || "No se puede mover por conflicto.");
@@ -706,7 +717,7 @@ async function removeItemsByIds(ids) {
   let failed = 0;
   for (const id of ids) {
     try {
-      const res = await fetch(`/api/items/${id}`, { ...API_FETCH, method: "DELETE" });
+      const res = await fetch(`/api/items/${id}`, { ...API_FETCH(), method: "DELETE" });
       if (!res.ok && res.status !== 404) failed += 1;
     } catch {
       failed += 1;
@@ -811,7 +822,7 @@ function itemsQuery() {
 }
 
 async function apiList() {
-  const res = await fetch(`/api/items${itemsQuery()}`, API_FETCH);
+  const res = await fetch(`/api/items${itemsQuery()}`, API_FETCH());
   if (res.status === 401) {
     window.location.replace("/login.html");
     throw new Error("No autenticado");
@@ -881,11 +892,7 @@ async function loadItems() {
 
 async function openShareFolder(item) {
   try {
-    const res = await fetch("/api/shares", {
-      ...API_JSON,
-      method: "POST",
-      body: JSON.stringify({ folderId: item.id }),
-    });
+    const res = await fetch("/api/shares", apiJson("POST", { folderId: item.id }));
     if (!res.ok) {
       await appAlert("No se pudo crear el enlace.");
       return;
@@ -995,11 +1002,7 @@ async function createNewFolder() {
   const pid = currentParentId();
   if (pid) body.parentId = pid;
   try {
-    const res = await fetch("/api/folders", {
-      ...API_JSON,
-      method: "POST",
-      body: JSON.stringify(body),
-    });
+    const res = await fetch("/api/folders", apiJson("POST", body));
     if (res.status === 409) {
       await appAlert("Ya hay un archivo o carpeta con ese nombre en esta ubicación.");
       return;
@@ -1024,11 +1027,7 @@ async function renameFolder(item) {
   const trimmed = String(nextName).trim();
   if (!trimmed || trimmed === String(item.name || "")) return;
   try {
-    const res = await fetch(`/api/folders/${item.id}`, {
-      ...API_JSON,
-      method: "PATCH",
-      body: JSON.stringify({ name: trimmed }),
-    });
+    const res = await fetch(`/api/folders/${item.id}`, apiJson("PATCH", { name: trimmed }));
     if (res.status === 409) {
       await appAlert("Ya hay un archivo o carpeta con ese nombre en esta ubicación.");
       return;
@@ -1128,6 +1127,8 @@ function uploadBatchXHR(form, onProgress) {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/upload");
     xhr.withCredentials = true;
+    const sessionToken = window.EyeAuth?.getSessionToken?.();
+    if (sessionToken) xhr.setRequestHeader("X-Session-Token", sessionToken);
     activeUploadController = { xhr, cancelled: false };
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) onProgress(event.loaded, event.total);
@@ -1732,7 +1733,7 @@ if (themeToggleBtn) {
 async function removeItem(id) {
   if (!(await appConfirm("¿Eliminar? Si es una carpeta, se borrará todo su contenido.", "Eliminar"))) return;
   try {
-    const res = await fetch(`/api/items/${id}`, { ...API_FETCH, method: "DELETE" });
+    const res = await fetch(`/api/items/${id}`, { ...API_FETCH(), method: "DELETE" });
     if (res.status === 404) {
       await appAlert("No encontrado.");
       return;
@@ -1848,7 +1849,7 @@ initAuth().then((authed) => {
 
 async function initAuth() {
   try {
-    const res = await fetch("/api/auth/me", API_FETCH);
+    const res = await fetch("/api/auth/me", API_FETCH());
     if (!res.ok) {
       window.location.replace("/login.html");
       return false;
@@ -1896,7 +1897,8 @@ function renderUserMenu() {
       document.getElementById("userMenuBtn")?.setAttribute("aria-expanded", open ? "true" : "false");
     });
     document.getElementById("userLogoutBtn")?.addEventListener("click", async () => {
-      await fetch("/api/auth/logout", { ...API_JSON, method: "POST" });
+      await fetch("/api/auth/logout", apiJson("POST"));
+      if (window.EyeAuth) window.EyeAuth.clearSessionToken();
       window.location.href = "/login.html";
     });
     document.addEventListener("click", () => {

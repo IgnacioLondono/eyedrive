@@ -1,7 +1,6 @@
 const authMessage = document.getElementById("authMessage");
 const loginForm = document.getElementById("loginForm");
 const loginSubmitBtn = document.getElementById("loginSubmitBtn");
-const fetchOpts = { credentials: "include", headers: { "Content-Type": "application/json" } };
 
 function showMessage(text, type = "info") {
   if (!authMessage) return;
@@ -16,8 +15,8 @@ function hideMessage() {
 
 async function checkAlreadyLoggedIn() {
   try {
-    const res = await fetch("/api/auth/me", { credentials: "include" });
-    if (res.ok) window.location.href = "/";
+    const res = await fetch("/api/auth/me", window.EyeAuth.fetchOpts());
+    if (res.ok) window.location.replace("/");
   } catch {}
 }
 
@@ -34,13 +33,16 @@ loginForm?.addEventListener("submit", async (ev) => {
   }
 
   try {
-    const res = await fetch("/api/auth/login", {
-      ...fetchOpts,
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
+    const res = await fetch(
+      "/api/auth/login",
+      window.EyeAuth.fetchJsonOpts({
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      })
+    );
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "Error al iniciar sesión");
+    window.EyeAuth.applySessionFromResponse(data);
     window.location.replace("/");
   } catch (e) {
     showMessage(e.message, "error");
