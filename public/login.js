@@ -41,7 +41,7 @@ loginForm?.addEventListener("submit", async (ev) => {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "Error al iniciar sesión");
-    window.location.href = "/";
+    window.location.replace("/");
   } catch (e) {
     showMessage(e.message, "error");
     if (loginSubmitBtn) {

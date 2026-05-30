@@ -813,7 +813,7 @@ function itemsQuery() {
 async function apiList() {
   const res = await fetch(`/api/items${itemsQuery()}`, API_FETCH);
   if (res.status === 401) {
-    window.location.href = "/login.html";
+    window.location.replace("/login.html");
     throw new Error("No autenticado");
   }
   if (!res.ok) throw new Error("No se pudo cargar el listado");
@@ -867,9 +867,14 @@ async function loadItems() {
     updateInFolderTools();
     applySearchFilter();
     fileCount.textContent = `${allItems.length} elemento${allItems.length === 1 ? "" : "s"}`;
-    await refreshSidebarFolderTree();
+    try {
+      await refreshSidebarFolderTree();
+    } catch (treeErr) {
+      console.error(treeErr);
+    }
   } catch (e) {
     console.error(e);
+    if (e.message === "No autenticado") return;
     await appAlert("No se pudo cargar. Comprueba la conexión e inténtalo de nuevo.");
   }
 }
@@ -1837,19 +1842,23 @@ function formatDate(dateString) {
 
 initTheme();
 initDecorIcons();
-initAuth().then(() => loadItems());
+initAuth().then((authed) => {
+  if (authed) loadItems();
+});
 
 async function initAuth() {
   try {
     const res = await fetch("/api/auth/me", API_FETCH);
     if (!res.ok) {
-      window.location.href = "/login.html";
-      return;
+      window.location.replace("/login.html");
+      return false;
     }
     currentUser = await res.json();
     renderUserMenu();
+    return true;
   } catch {
-    window.location.href = "/login.html";
+    window.location.replace("/login.html");
+    return false;
   }
 }
 

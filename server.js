@@ -27,6 +27,8 @@ const DATABASE_URL =
 const pool = new Pool({ connectionString: DATABASE_URL });
 const app = express();
 
+app.set("trust proxy", 1);
+
 app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
 

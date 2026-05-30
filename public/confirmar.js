@@ -52,7 +52,7 @@ confirmForm?.addEventListener("submit", async (ev) => {
     if (!res.ok) throw new Error(data.error || "Código incorrecto");
 
     sessionStorage.removeItem("eyedrive.pendingEmail");
-    window.location.href = "/";
+    window.location.replace("/");
   } catch (e) {
     showMessage(e.message, "error");
     if (confirmSubmitBtn) {
