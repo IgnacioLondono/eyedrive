@@ -299,7 +299,6 @@ function initDecorIcons() {
   fill("icDialogShare", () => I.share());
   fill("icCopy", () => I.copy());
   fill("icMail", () => I.mail());
-  fill("icThemeToggle", () => I.moon());
 }
 
 const NAV_STATE_KEY = "eyedrive.nav.pathSegments.v1";
@@ -1919,8 +1918,8 @@ function formatDate(dateString) {
   }).format(new Date(dateString));
 }
 
-initTheme();
 initDecorIcons();
+initTheme();
 initAuth().then((authed) => {
   if (authed) loadItems();
 });
