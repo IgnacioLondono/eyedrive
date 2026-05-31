@@ -71,6 +71,26 @@
           </section>
 
           <section class="account-section">
+            <h3>Seguridad</h3>
+            <p class="auth-subtitle account-section__hint">
+              Si activas el código de acceso, en navegadores nuevos te pediremos un código por correo. Este
+              navegador quedará registrado al confirmarlo y no volverá a pedirlo aquí.
+            </p>
+            <label class="account-toggle">
+              <input type="checkbox" id="loginCodeEnabled" />
+              <span>Exigir código de acceso al iniciar sesión</span>
+            </label>
+
+            <div id="trustedDevicesWrap" class="trusted-devices" hidden>
+              <h4 class="trusted-devices__title">Navegadores registrados</h4>
+              <ul id="trustedDevicesList" class="trusted-devices__list"></ul>
+              <button type="button" id="revokeAllDevicesBtn" class="btn-secondary">
+                Quitar todos los navegadores
+              </button>
+            </div>
+          </section>
+
+          <section class="account-section">
             <h3>Contraseña</h3>
             <form id="passwordForm" class="auth-form">
               <div class="auth-field">

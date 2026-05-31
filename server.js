@@ -86,6 +86,26 @@ async function initDb() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
   `);
   await pool.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS login_code_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS trusted_devices (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      device_hash TEXT NOT NULL,
+      device_label TEXT,
+      user_agent TEXT,
+      last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      expires_at TIMESTAMPTZ NOT NULL,
+      UNIQUE (user_id, device_hash)
+    );
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS trusted_devices_user_expires_idx
+    ON trusted_devices (user_id, expires_at);
+  `);
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS pending_registrations (
       email TEXT PRIMARY KEY,
       display_name TEXT NOT NULL,

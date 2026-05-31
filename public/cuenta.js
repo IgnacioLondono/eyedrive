@@ -95,6 +95,75 @@ async function loadAccount() {
   return res.json();
 }
 
+function formatDeviceDate(value) {
+  if (!value) return "—";
+  try {
+    return new Date(value).toLocaleString("es-ES", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  } catch {
+    return "—";
+  }
+}
+
+async function loadTrustedDevices() {
+  const wrap = document.getElementById("trustedDevicesWrap");
+  const list = document.getElementById("trustedDevicesList");
+  const enabled = document.getElementById("loginCodeEnabled")?.checked;
+  if (!wrap || !list || !enabled) {
+    if (wrap) wrap.hidden = true;
+    return;
+  }
+
+  const res = await fetch(
+    `/api/auth/account/devices?deviceId=${encodeURIComponent(window.EyeAuth.getDeviceId())}`,
+    window.EyeAuth.fetchOpts()
+  );
+  if (!res.ok) {
+    wrap.hidden = true;
+    return;
+  }
+
+  const data = await res.json().catch(() => ({ devices: [] }));
+  const devices = data.devices || [];
+  wrap.hidden = devices.length === 0;
+  list.innerHTML = devices
+    .map(
+      (device) => `
+      <li class="trusted-device-item">
+        <div class="trusted-device-item__meta">
+          <span class="trusted-device-item__label">${device.label}${device.isCurrent ? " (este navegador)" : ""}</span>
+          <span class="trusted-device-item__date">Último acceso: ${formatDeviceDate(device.lastUsedAt)}</span>
+        </div>
+        ${
+          device.isCurrent
+            ? `<span class="trusted-device-item__badge">Actual</span>`
+            : `<button type="button" class="btn-secondary btn-small" data-device-id="${device.id}">Quitar</button>`
+        }
+      </li>`
+    )
+    .join("");
+
+  list.querySelectorAll("[data-device-id]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.getAttribute("data-device-id");
+      try {
+        const res = await fetch(
+          `/api/auth/account/devices/${id}`,
+          window.EyeAuth.fetchJsonOpts({ method: "DELETE" })
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "No se pudo quitar el dispositivo");
+        showMessage("Navegador quitado.", "success");
+        await loadTrustedDevices();
+      } catch (e) {
+        showMessage(e.message, "error");
+      }
+    });
+  });
+}
+
 async function init() {
   initTheme();
 
@@ -123,6 +192,53 @@ async function init() {
   document.getElementById("displayName").value = user.displayName || "";
   document.getElementById("accountEmail").textContent = user.email;
   document.getElementById("accountVerified").textContent = user.emailVerified ? "Verificado" : "Pendiente";
+
+  const loginCodeToggle = document.getElementById("loginCodeEnabled");
+  if (loginCodeToggle) {
+    loginCodeToggle.checked = Boolean(user.loginCodeEnabled);
+    loginCodeToggle.addEventListener("change", async () => {
+      const loginCodeEnabled = loginCodeToggle.checked;
+      try {
+        const res = await fetch(
+          "/api/auth/account/security",
+          window.EyeAuth.fetchJsonOpts({
+            method: "PATCH",
+            body: window.EyeAuth.authJsonBody({ loginCodeEnabled }),
+          })
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "No se pudo guardar");
+        user.loginCodeEnabled = loginCodeEnabled;
+        showMessage(
+          loginCodeEnabled
+            ? "Código de acceso activado. Este navegador ya quedó registrado."
+            : "Código de acceso desactivado.",
+          "success"
+        );
+        await loadTrustedDevices();
+      } catch (e) {
+        loginCodeToggle.checked = !loginCodeEnabled;
+        showMessage(e.message, "error");
+      }
+    });
+  }
+
+  await loadTrustedDevices();
+
+  document.getElementById("revokeAllDevicesBtn")?.addEventListener("click", async () => {
+    try {
+      const res = await fetch(
+        "/api/auth/account/devices",
+        window.EyeAuth.fetchJsonOpts({ method: "DELETE" })
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudieron quitar los navegadores");
+      showMessage("Se quitaron todos los navegadores registrados.", "success");
+      await loadTrustedDevices();
+    } catch (e) {
+      showMessage(e.message, "error");
+    }
+  });
 
   document.getElementById("profileForm")?.addEventListener("submit", async (ev) => {
     ev.preventDefault();

@@ -7,6 +7,7 @@ const loginStepCredentials = document.getElementById("loginStepCredentials");
 const loginStepCode = document.getElementById("loginStepCode");
 const loginStepLabel1 = document.getElementById("loginStepLabel1");
 const loginStepLabel2 = document.getElementById("loginStepLabel2");
+const loginStepsBar = document.getElementById("loginStepsBar");
 const loginEmailLabel = document.getElementById("loginEmailLabel");
 const loginEmailInput = document.getElementById("loginEmail");
 const loginCodeInput = document.getElementById("loginCode");
@@ -27,6 +28,7 @@ function hideMessage() {
 
 function setLoginStep(step) {
   const onCode = step === "code";
+  if (loginStepsBar) loginStepsBar.hidden = !onCode;
   if (loginStepCredentials) loginStepCredentials.hidden = onCode;
   if (loginStepCode) loginStepCode.hidden = !onCode;
   loginStepLabel1?.classList.toggle("auth-step--active", !onCode);
@@ -73,7 +75,7 @@ loginForm?.addEventListener("submit", async (ev) => {
 
   if (loginSubmitBtn) {
     loginSubmitBtn.disabled = true;
-    loginSubmitBtn.textContent = "Enviando código…";
+    loginSubmitBtn.textContent = "Entrando…";
   }
 
   try {
@@ -81,7 +83,7 @@ loginForm?.addEventListener("submit", async (ev) => {
       "/api/auth/login",
       window.EyeAuth.fetchJsonOpts({
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: window.EyeAuth.authJsonBody({ email, password }),
       })
     );
     const data = await res.json().catch(() => ({}));
@@ -94,6 +96,10 @@ loginForm?.addEventListener("submit", async (ev) => {
       return;
     }
 
+    if (!data.needsCode) {
+      throw new Error("No se pudo completar el inicio de sesión");
+    }
+
     showCodeStep(data.email || email);
     showMessage(data.message || "Te hemos enviado un código a tu correo.", "success");
   } catch (e) {
@@ -101,7 +107,7 @@ loginForm?.addEventListener("submit", async (ev) => {
   } finally {
     if (loginSubmitBtn) {
       loginSubmitBtn.disabled = false;
-      loginSubmitBtn.textContent = "Continuar";
+      loginSubmitBtn.textContent = "Entrar";
     }
   }
 });
@@ -127,7 +133,7 @@ loginConfirmForm?.addEventListener("submit", async (ev) => {
       "/api/auth/login/confirm",
       window.EyeAuth.fetchJsonOpts({
         method: "POST",
-        body: JSON.stringify({ email: pendingLoginEmail, code }),
+        body: window.EyeAuth.authJsonBody({ email: pendingLoginEmail, code }),
       })
     );
     const data = await res.json().catch(() => ({}));
@@ -158,7 +164,7 @@ document.getElementById("loginResendBtn")?.addEventListener("click", async () =>
       "/api/auth/login/resend",
       window.EyeAuth.fetchJsonOpts({
         method: "POST",
-        body: JSON.stringify({ email: pendingLoginEmail }),
+        body: window.EyeAuth.authJsonBody({ email: pendingLoginEmail }),
       })
     );
     const data = await res.json().catch(() => ({}));
