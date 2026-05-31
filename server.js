@@ -809,6 +809,29 @@ app.get("/api/folders/tree", requireAuth, async (req, res) => {
   }
 });
 
+app.get("/api/items/tree", requireAuth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, parent_id, name, type
+       FROM items
+       WHERE user_id = $1::uuid
+       ORDER BY CASE WHEN type = 'folder' THEN 0 ELSE 1 END, lower(name)`,
+      [req.user.id]
+    );
+    res.json(
+      rows.map((r) => ({
+        id: r.id,
+        parentId: r.parent_id,
+        name: r.name,
+        type: r.type,
+      }))
+    );
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Error al listar el árbol" });
+  }
+});
+
 app.post("/api/items/move", requireAuth, async (req, res) => {
   const idsRaw = Array.isArray(req.body?.itemIds) ? req.body.itemIds : [];
   const itemIds = [...new Set(idsRaw.map((x) => String(x || "").trim()))].filter((x) => UUID_RE.test(x));

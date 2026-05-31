@@ -38,11 +38,24 @@
         <input id="folderInput" type="file" hidden multiple webkitdirectory mozdirectory />
 
         <nav class="side-nav">
-          <a class="side-link active" href="#" id="navDrive">
-            <span class="side-link-ic" id="icNavDrive" aria-hidden="true"></span>
-            <span>Mi unidad</span>
-          </a>
-          <div id="sidebarFolderTree" class="sidebar-folder-tree" aria-label="Árbol de carpetas"></div>
+          <div class="sidebar-tree-block">
+            <div class="tree-root-row">
+              <button
+                type="button"
+                id="treeRootToggle"
+                class="tree-toggle tree-root-toggle"
+                aria-label="Expandir o contraer Mi unidad"
+                aria-expanded="true"
+              >
+                ▾
+              </button>
+              <a class="side-link tree-root-link active" href="#" id="navDrive">
+                <span class="side-link-ic" id="icNavDrive" aria-hidden="true"></span>
+                <span>Mi unidad</span>
+              </a>
+            </div>
+            <div id="sidebarFolderTree" class="sidebar-folder-tree" aria-label="Árbol de carpetas y archivos"></div>
+          </div>
         </nav>
       </aside>
 

@@ -67,7 +67,8 @@ let currentUser = null;
 /** @type {{ url: string, name: string }} */
 let lastShare = { url: "", name: "" };
 /** ids de carpetas expandidas en el árbol lateral */
-const expandedFolderIds = new Set();
+const expandedFolderIds = new Set(["ROOT"]);
+let sidebarTreeCache = [];
 
 function showAppModal({
   title,
@@ -452,6 +453,12 @@ async function apiFolderTree() {
   return res.json();
 }
 
+async function apiItemTree() {
+  const res = await fetch("/api/items/tree", API_FETCH());
+  if (!res.ok) throw new Error("tree");
+  return res.json();
+}
+
 function buildFolderPathMap(folders) {
   const byId = new Map();
   folders.forEach((f) => byId.set(String(f.id), { ...f, id: String(f.id), parentId: f.parentId == null ? null : String(f.parentId) }));
@@ -501,29 +508,60 @@ function ensureExpandedPathFromCurrent() {
   pathSegments.forEach((seg) => expandedFolderIds.add(String(seg.id)));
 }
 
-function renderSidebarFolderTree(folders) {
+function sortTreeNodes(a, b) {
+  if (a.itemType !== b.itemType) return a.itemType === "folder" ? -1 : 1;
+  return a.name.localeCompare(b.name, "es", { sensitivity: "base" });
+}
+
+function updateTreeRootToggle() {
+  const btn = document.getElementById("treeRootToggle");
+  if (!btn) return;
+  const expanded = expandedFolderIds.has("ROOT");
+  btn.textContent = expanded ? "▾" : "▸";
+  btn.setAttribute("aria-expanded", expanded ? "true" : "false");
+}
+
+function updateTreeRootActiveState() {
+  if (navDrive) navDrive.classList.toggle("active", pathSegments.length === 0);
+}
+
+function renderSidebarFolderTree(items) {
   if (!sidebarFolderTree) return;
+  const allItems = Array.isArray(items) ? items : [];
+  const folders = allItems.filter((it) => String(it.type || it.itemType) === "folder");
+  const byId = buildFolderByIdMap(
+    folders.map((f) => ({ id: f.id, name: f.name, parentId: f.parentId }))
+  );
+
   const byParent = new Map();
-  const byId = buildFolderByIdMap(folders);
-  folders.forEach((f) => {
-    const parentKey = f.parentId == null ? "ROOT" : String(f.parentId);
+  allItems.forEach((it) => {
+    const itemType = String(it.type || it.itemType) === "folder" ? "folder" : "file";
+    const parentKey = it.parentId == null ? "ROOT" : String(it.parentId);
     const arr = byParent.get(parentKey) || [];
-    arr.push({ id: String(f.id), name: String(f.name || ""), parentId: f.parentId == null ? null : String(f.parentId) });
+    arr.push({
+      id: String(it.id),
+      name: String(it.name || ""),
+      parentId: it.parentId == null ? null : String(it.parentId),
+      itemType,
+    });
     byParent.set(parentKey, arr);
   });
   for (const [k, arr] of byParent) {
-    arr.sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
+    arr.sort(sortTreeNodes);
     byParent.set(k, arr);
   }
 
   const activeId = pathSegments.length ? String(pathSegments[pathSegments.length - 1].id) : "";
   sidebarFolderTree.innerHTML = "";
+  updateTreeRootToggle();
+  updateTreeRootActiveState();
 
   const renderChildren = (parentId, level, ancestorsHasNext) => {
     const key = parentId == null ? "ROOT" : String(parentId);
     const children = byParent.get(key) || [];
     children.forEach((node, idx) => {
       const isLast = idx === children.length - 1;
+      const isFolder = node.itemType === "folder";
       const item = document.createElement("div");
       item.className = "tree-item";
       item.style.setProperty("--level", String(level));
@@ -545,31 +583,45 @@ function renderSidebarFolderTree(folders) {
       elbow.className = `tree-elbow ${isLast ? "tree-elbow--last" : ""}`;
       row.appendChild(elbow);
 
-      const hasChildren = (byParent.get(node.id) || []).length > 0;
-      const toggle = document.createElement("button");
-      toggle.type = "button";
-      toggle.className = "tree-toggle";
-      toggle.setAttribute("aria-label", hasChildren ? "Expandir o contraer" : "Sin subcarpetas");
-      if (!hasChildren) toggle.disabled = true;
-      toggle.textContent = hasChildren ? (expandedFolderIds.has(node.id) ? "▾" : "▸") : "•";
-      toggle.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        if (!hasChildren) return;
-        if (expandedFolderIds.has(node.id)) expandedFolderIds.delete(node.id);
-        else expandedFolderIds.add(node.id);
-        renderSidebarFolderTree(folders);
-      });
-      row.appendChild(toggle);
+      const childNodes = byParent.get(node.id) || [];
+      const hasChildren = isFolder && childNodes.length > 0;
+
+      if (isFolder) {
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "tree-toggle";
+        toggle.setAttribute("aria-label", hasChildren ? "Expandir o contraer" : "Sin contenido");
+        if (!hasChildren) toggle.disabled = true;
+        toggle.textContent = hasChildren ? (expandedFolderIds.has(node.id) ? "▾" : "▸") : "•";
+        toggle.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          if (!hasChildren) return;
+          if (expandedFolderIds.has(node.id)) expandedFolderIds.delete(node.id);
+          else expandedFolderIds.add(node.id);
+          renderSidebarFolderTree(sidebarTreeCache);
+        });
+        row.appendChild(toggle);
+      } else {
+        const fileIc = document.createElement("span");
+        fileIc.className = "tree-file-ic";
+        fileIc.setAttribute("aria-hidden", "true");
+        if (window.EyeIcons) window.EyeIcons.setFileIcon(fileIc, "file", node.name);
+        row.appendChild(fileIc);
+      }
 
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "tree-node-btn";
-      if (activeId === node.id) btn.classList.add("active");
+      btn.className = `tree-node-btn${isFolder ? "" : " tree-node-btn--file"}`;
+      if (isFolder && activeId === node.id) btn.classList.add("active");
       btn.textContent = node.name;
-      btn.title = `Abrir ${node.name}`;
+      btn.title = isFolder ? `Abrir ${node.name}` : `Descargar ${node.name}`;
       btn.addEventListener("click", () => {
-        const nextSegments = folderPathSegmentsFromId(byId, node.id);
-        navigateToPath(nextSegments, { push: true });
+        if (isFolder) {
+          const nextSegments = folderPathSegmentsFromId(byId, node.id);
+          navigateToPath(nextSegments, { push: true });
+          return;
+        }
+        openItem({ id: node.id, name: node.name, itemType: "file" });
       });
       row.appendChild(btn);
 
@@ -582,15 +634,17 @@ function renderSidebarFolderTree(folders) {
     });
   };
 
-  renderChildren(null, 0, []);
+  if (expandedFolderIds.has("ROOT")) {
+    renderChildren(null, 0, []);
+  }
 }
 
 async function refreshSidebarFolderTree() {
   if (!sidebarFolderTree) return;
   try {
     ensureExpandedPathFromCurrent();
-    const folders = await apiFolderTree();
-    renderSidebarFolderTree(Array.isArray(folders) ? folders : []);
+    sidebarTreeCache = await apiItemTree();
+    renderSidebarFolderTree(Array.isArray(sidebarTreeCache) ? sidebarTreeCache : []);
   } catch (e) {
     console.error(e);
   }
@@ -1052,6 +1106,13 @@ refreshBtn.addEventListener("click", () => loadItems());
 navDrive.addEventListener("click", (e) => {
   e.preventDefault();
   navigateToPath([], { push: true });
+});
+
+document.getElementById("treeRootToggle")?.addEventListener("click", (ev) => {
+  ev.stopPropagation();
+  if (expandedFolderIds.has("ROOT")) expandedFolderIds.delete("ROOT");
+  else expandedFolderIds.add("ROOT");
+  renderSidebarFolderTree(sidebarTreeCache);
 });
 
 dropzone.addEventListener("dragover", (event) => {

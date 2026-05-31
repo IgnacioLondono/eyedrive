@@ -163,10 +163,75 @@ body::after {
 }
 
 .sidebar-folder-tree {
-  margin-top: 0.2rem;
+  margin-top: 0.15rem;
   padding-left: 0.15rem;
   display: grid;
   gap: 0.12rem;
+}
+
+.sidebar-tree-block {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.tree-root-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.tree-root-toggle {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex-shrink: 0;
+}
+
+.side-link.tree-root-link {
+  min-width: 0;
+  font-weight: 700;
+  padding: 0.58rem 0.75rem;
+  border-width: 2px;
+  box-shadow: none;
+}
+
+.side-link.tree-root-link.active {
+  border-color: var(--menu-select-border);
+  color: var(--menu-select-text);
+  background: transparent;
+}
+
+html[data-theme="dark"] .side-link.tree-root-link {
+  color: var(--sidebar-text);
+}
+
+html[data-theme="dark"] .side-link.tree-root-link.active {
+  color: var(--menu-select-text);
+}
+
+.tree-file-ic {
+  width: 1rem;
+  height: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--sidebar-muted);
+}
+
+.tree-file-ic .icon-svg {
+  width: 0.82rem;
+  height: 0.82rem;
+}
+
+.tree-node-btn--file {
+  font-weight: 500;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--menu-item-border) 88%, transparent);
+}
+
+.tree-node-btn--file:hover {
+  border-style: solid;
 }
 
 .tree-item {
