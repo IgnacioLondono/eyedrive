@@ -1,6 +1,4 @@
 # Compatible con Docker Compose v2 y Portainer (stack)
-version: "3.8"
-
 services:
   db:
     image: postgres:16-alpine
@@ -12,7 +10,9 @@ services:
     volumes:
       - /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Eyedrive/postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U eyed -d eyed"]
+      test:
+        - CMD-SHELL
+        - pg_isready -U eyed -d eyed
       interval: 3s
       timeout: 5s
       retries: 12
@@ -46,7 +46,11 @@ services:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/api/health"]
+      test:
+        - CMD
+        - curl
+        - -fsS
+        - http://127.0.0.1:3000/api/health
       interval: 30s
       timeout: 5s
       retries: 5
