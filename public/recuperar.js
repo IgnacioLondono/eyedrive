@@ -52,8 +52,4 @@ resetRequestForm?.addEventListener("submit", async (ev) => {
   }
 });
 
-if (window.EyeIcons) {
-  const brand = document.getElementById("brandIcon");
-  if (brand) brand.innerHTML = window.EyeIcons.eye();
-}
 checkAlreadyLoggedIn();

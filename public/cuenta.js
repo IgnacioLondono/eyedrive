@@ -175,10 +175,8 @@ async function init() {
   initTheme();
 
   if (window.EyeIcons) {
-    const brand = document.getElementById("brandIcon");
     const driveIc = document.getElementById("icNavDrive");
     const themeIc = document.getElementById("icThemeToggle");
-    if (brand) brand.innerHTML = window.EyeIcons.eye();
     if (driveIc) driveIc.innerHTML = window.EyeIcons.hardDrive();
     const t = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
     if (themeIc) themeIc.innerHTML = t === "dark" ? window.EyeIcons.sun() : window.EyeIcons.moon();

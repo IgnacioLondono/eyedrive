@@ -484,3 +484,46 @@ html[data-theme="dark"] .user-menu-dropdown a[aria-current="page"] {
   border-bottom: 1px solid var(--border);
   margin-bottom: 4px;
 }
+
+.auth-brand .brand-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.85rem;
+  background: linear-gradient(120deg, rgba(109, 91, 253, 0.14), rgba(28, 156, 255, 0.14));
+  color: #6d5bfd;
+  flex-shrink: 0;
+}
+
+.eye-brand .eye-brand-svg {
+  overflow: visible;
+}
+
+.eye-brand .eye-brand-inner {
+  transform-origin: 12px 12px;
+  transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.eye-brand--closed .eye-brand-inner,
+.eye-brand--blink .eye-brand-inner {
+  transform: scaleY(0.12);
+}
+
+.eye-brand--closed .eye-brand-inner {
+  transition-duration: 0.32s;
+}
+
+.eye-brand--blink .eye-brand-inner {
+  transition-duration: 0.09s;
+}
+
+.eye-brand .eye-brand-pupil {
+  transition: opacity 0.18s ease;
+}
+
+.eye-brand--closed .eye-brand-pupil,
+.eye-brand--blink .eye-brand-pupil {
+  opacity: 0;
+}

@@ -82,8 +82,4 @@ document.getElementById("resendBtn")?.addEventListener("click", async () => {
   }
 });
 
-if (window.EyeIcons) {
-  const brand = document.getElementById("brandIcon");
-  if (brand) brand.innerHTML = window.EyeIcons.eye();
-}
 checkAlreadyLoggedIn();

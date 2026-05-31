@@ -187,11 +187,6 @@ document.getElementById("loginBackBtn")?.addEventListener("click", () => {
   showCredentialsStep();
 });
 
-if (window.EyeIcons) {
-  const brand = document.getElementById("brandIcon");
-  if (brand) brand.innerHTML = window.EyeIcons.eye();
-}
-
 checkAlreadyLoggedIn();
 
 const urlStep = new URLSearchParams(window.location.search).get("step");

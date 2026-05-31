@@ -140,6 +140,37 @@ body::after {
   height: 1.35rem;
 }
 
+.eye-brand .eye-brand-svg {
+  overflow: visible;
+}
+
+.eye-brand .eye-brand-inner {
+  transform-origin: 12px 12px;
+  transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.eye-brand--closed .eye-brand-inner,
+.eye-brand--blink .eye-brand-inner {
+  transform: scaleY(0.12);
+}
+
+.eye-brand--closed .eye-brand-inner {
+  transition-duration: 0.32s;
+}
+
+.eye-brand--blink .eye-brand-inner {
+  transition-duration: 0.09s;
+}
+
+.eye-brand .eye-brand-pupil {
+  transition: opacity 0.18s ease;
+}
+
+.eye-brand--closed .eye-brand-pupil,
+.eye-brand--blink .eye-brand-pupil {
+  opacity: 0;
+}
+
 .sidebar h1 {
   margin: 0;
   font-size: 1.28rem;

@@ -283,7 +283,11 @@ function initDecorIcons() {
     const el = document.getElementById(id);
     if (el) el.innerHTML = fn();
   };
-  fill("brandIcon", () => I.eye());
+  const brandEl = document.getElementById("brandIcon");
+  if (brandEl && !brandEl.dataset.eyeBrandMounted) {
+    if (window.EyeBrand) window.EyeBrand.mount(brandEl, { closeOnPassword: false });
+    else fill("brandIcon", () => I.eye());
+  }
   fill("icUpload", () => I.cloudUpload());
   fill("icNewFolder", () => I.folderPlus());
   fill("icSearch", () => I.search());
