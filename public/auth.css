@@ -180,6 +180,11 @@
   flex-wrap: wrap;
 }
 
+.auth-steps[hidden],
+.auth-step[hidden] {
+  display: none !important;
+}
+
 .auth-step {
   font-size: 0.8rem;
   font-weight: 600;

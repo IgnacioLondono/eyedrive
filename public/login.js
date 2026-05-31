@@ -36,6 +36,7 @@ function hideMessage() {
 function setLoginStep(step) {
   const onCode = step === "code";
   if (loginStepsBar) loginStepsBar.hidden = !onCode;
+  if (loginStepLabel2) loginStepLabel2.hidden = !onCode;
   if (loginStepCredentials) loginStepCredentials.hidden = onCode;
   if (loginStepCode) loginStepCode.hidden = !onCode;
   loginStepLabel1?.classList.toggle("auth-step--active", !onCode);
