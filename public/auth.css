@@ -115,6 +115,17 @@
   color: var(--secondary);
 }
 
+.auth-spam-hint {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--menu-item-border);
+  border-radius: 10px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--muted);
+  background: transparent;
+}
+
 .auth-forgot {
   margin: -4px 0 0;
   text-align: right;
@@ -175,14 +186,16 @@
   color: var(--muted);
   padding: 6px 12px;
   border-radius: 999px;
-  background: rgba(109, 91, 253, 0.06);
-  border: 1px solid var(--border);
+  background: transparent;
+  border: 1.5px solid var(--menu-item-border);
 }
 
 .auth-step--active {
-  color: var(--menu-hover-text);
-  border-color: var(--menu-hover-bg);
-  background: var(--menu-hover-bg);
+  color: var(--menu-select-text);
+  border-color: var(--menu-select-border);
+  border-width: 2px;
+  background: transparent;
+  font-weight: 700;
 }
 
 .auth-step--done {
@@ -273,8 +286,9 @@ html[data-theme="dark"] .user-menu-dropdown {
 html[data-theme="dark"] .user-menu-dropdown a:hover,
 html[data-theme="dark"] .user-menu-dropdown button:hover,
 html[data-theme="dark"] .user-menu-dropdown a[aria-current="page"] {
-  background: var(--menu-hover-bg);
-  color: var(--menu-hover-text);
+  border-color: var(--menu-select-border);
+  color: var(--menu-select-text);
+  background: transparent;
 }
 
 .account-row {
@@ -340,6 +354,9 @@ html[data-theme="dark"] .user-menu-dropdown a[aria-current="page"] {
   padding: 8px;
   box-shadow: 0 12px 40px rgba(15, 15, 18, 0.12);
   z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .user-menu-dropdown[hidden] {
@@ -352,20 +369,24 @@ html[data-theme="dark"] .user-menu-dropdown a[aria-current="page"] {
   width: 100%;
   text-align: left;
   padding: 10px 12px;
-  border: none;
-  background: none;
+  border: 1.5px solid var(--menu-item-border);
+  background: transparent;
   color: var(--text);
   font: inherit;
   border-radius: 10px;
   cursor: pointer;
   text-decoration: none;
+  transition: border-color 0.12s ease, color 0.12s ease, border-width 0.12s ease;
 }
 
 .user-menu-dropdown a:hover,
 .user-menu-dropdown button:hover,
 .user-menu-dropdown a[aria-current="page"] {
-  background: var(--menu-hover-bg);
-  color: var(--menu-hover-text);
+  border-color: var(--menu-select-border);
+  border-width: 2px;
+  color: var(--menu-select-text);
+  background: transparent;
+  font-weight: 700;
 }
 
 .user-menu-email {

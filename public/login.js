@@ -29,7 +29,7 @@ loginForm?.addEventListener("submit", async (ev) => {
 
   if (loginSubmitBtn) {
     loginSubmitBtn.disabled = true;
-    loginSubmitBtn.textContent = "Entrando…";
+    loginSubmitBtn.textContent = "Enviando código…";
   }
 
   try {
@@ -42,8 +42,9 @@ loginForm?.addEventListener("submit", async (ev) => {
     );
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "Error al iniciar sesión");
-    window.EyeAuth.applySessionFromResponse(data);
-    window.location.replace("/");
+
+    sessionStorage.setItem("eyedrive.loginEmail", email);
+    window.location.href = "/login-confirmar.html";
   } catch (e) {
     showMessage(e.message, "error");
     if (loginSubmitBtn) {
