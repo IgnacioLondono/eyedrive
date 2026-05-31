@@ -287,9 +287,9 @@ html[data-theme="dark"] .tree-elbow {
 
 .side-link.active,
 .side-link:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.18);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  color: var(--menu-hover-text);
+  background: var(--menu-hover-bg);
+  box-shadow: none;
 }
 
 .side-link.active {
@@ -1743,6 +1743,8 @@ html[data-theme="dark"] .breadcrumb .crumb {
   --glass-stroke: rgba(16, 19, 23, 0.1);
   --sidebar-text: #101317;
   --sidebar-muted: #5f6b7a;
+  --menu-hover-bg: #0f0f12;
+  --menu-hover-text: #ffffff;
 }
 
 html[data-theme="dark"] {
@@ -1753,6 +1755,10 @@ html[data-theme="dark"] {
   --muted: #a9b6c9;
   --border: rgba(255, 255, 255, 0.12);
   --glass-stroke: rgba(255, 255, 255, 0.14);
+  --sidebar-text: #ffffff;
+  --sidebar-muted: #d1d5db;
+  --menu-hover-bg: #ffffff;
+  --menu-hover-text: #0f0f12;
 }
 
 body,
@@ -1984,6 +1990,10 @@ html[data-theme="dark"] {
   --muted: #b3b3b3 !important;
   --border: rgba(255, 255, 255, 0.16) !important;
   --glass-stroke: rgba(255, 255, 255, 0.18) !important;
+  --sidebar-text: #ffffff !important;
+  --sidebar-muted: #d1d5db !important;
+  --menu-hover-bg: #ffffff !important;
+  --menu-hover-text: #0f0f12 !important;
 }
 
 html[data-theme="dark"] body,
@@ -2310,7 +2320,15 @@ html[data-theme="dark"] .share-hero-ic .icon-svg {
   color: #ffffff !important;
 }
 
-/* Mi unidad: resaltado blanco/negro según tema */
+/* Mi unidad y enlaces del sidebar */
+.side-link {
+  color: var(--sidebar-muted);
+}
+
+html[data-theme="dark"] .side-link {
+  color: var(--sidebar-text);
+}
+
 .side-link.active,
 .side-link:hover {
   color: var(--menu-hover-text) !important;
@@ -2319,8 +2337,19 @@ html[data-theme="dark"] .share-hero-ic .icon-svg {
 }
 
 .side-link.active .side-link-ic,
-.side-link:hover .side-link-ic {
-  color: inherit;
+.side-link:hover .side-link-ic,
+.side-link.active .side-link-ic .icon-svg,
+.side-link:hover .side-link-ic .icon-svg {
+  color: inherit !important;
+}
+
+html[data-theme="dark"] .side-link .side-link-ic .icon-svg {
+  color: var(--sidebar-text) !important;
+}
+
+html[data-theme="dark"] .side-link.active .side-link-ic .icon-svg,
+html[data-theme="dark"] .side-link:hover .side-link-ic .icon-svg {
+  color: var(--menu-hover-text) !important;
 }
 
 /* Iconos más grandes para mejor visibilidad */
