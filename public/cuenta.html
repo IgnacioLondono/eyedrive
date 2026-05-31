@@ -89,6 +89,89 @@
             </form>
           </section>
 
+          <section class="account-section" id="twoFactorSection">
+            <h3>Verificación en 2 pasos</h3>
+            <p class="auth-subtitle account-section__hint">
+              Protege tu cuenta con una app autenticadora en el teléfono (Google Authenticator, Authy, etc.).
+              También puedes usar código por correo o códigos de respaldo al iniciar sesión.
+            </p>
+            <div class="account-row">
+              <label>Estado</label>
+              <span id="twoFactorStatus">—</span>
+            </div>
+            <div class="account-row">
+              <label>Códigos de respaldo restantes</label>
+              <span id="twoFactorBackupCount">—</span>
+            </div>
+
+            <form id="phoneForm" class="auth-form account-2fa-phone">
+              <div class="auth-field">
+                <label for="accountPhone">Teléfono (opcional, para referencia)</label>
+                <input id="accountPhone" type="tel" autocomplete="tel" placeholder="+56912345678" />
+              </div>
+              <button type="submit" class="btn-secondary">Guardar teléfono</button>
+            </form>
+
+            <div id="twoFactorDisabledPanel">
+              <button type="button" id="twoFactorSetupBtn" class="btn-primary">Activar verificación en 2 pasos</button>
+            </div>
+
+            <div id="twoFactorSetupPanel" class="account-2fa-setup" hidden>
+              <p class="auth-subtitle">Escanea este código QR con tu app autenticadora o introduce la clave manualmente.</p>
+              <div class="account-2fa-qr-wrap">
+                <img id="twoFactorQr" class="account-2fa-qr" alt="Código QR para 2FA" width="220" height="220" />
+              </div>
+              <div class="account-row account-row--secret">
+                <label>Clave manual</label>
+                <code id="twoFactorSecret">—</code>
+              </div>
+              <form id="twoFactorEnableForm" class="auth-form">
+                <div class="auth-field">
+                  <label for="twoFactorEnableCode">Código de la app</label>
+                  <input id="twoFactorEnableCode" class="auth-code-input" type="text" inputmode="numeric" maxlength="6" placeholder="000000" />
+                </div>
+                <div class="auth-field">
+                  <label for="twoFactorEnablePassword">Contraseña actual</label>
+                  <input id="twoFactorEnablePassword" type="password" autocomplete="current-password" />
+                </div>
+                <button type="submit" class="btn-primary">Confirmar activación</button>
+                <button type="button" id="twoFactorSetupCancelBtn" class="btn-secondary">Cancelar</button>
+              </form>
+            </div>
+
+            <div id="twoFactorBackupPanel" class="account-2fa-backup" hidden>
+              <p class="auth-subtitle"><strong>Guarda estos códigos de respaldo</strong> en un lugar seguro. Cada uno solo se puede usar una vez.</p>
+              <ul id="twoFactorBackupList" class="account-backup-list"></ul>
+            </div>
+
+            <div id="twoFactorEnabledPanel" hidden>
+              <form id="twoFactorRegenForm" class="auth-form">
+                <p class="auth-subtitle">Regenerar códigos de respaldo (requiere código de la app).</p>
+                <div class="auth-field">
+                  <label for="twoFactorRegenCode">Código de la app</label>
+                  <input id="twoFactorRegenCode" class="auth-code-input" type="text" inputmode="numeric" maxlength="6" placeholder="000000" />
+                </div>
+                <div class="auth-field">
+                  <label for="twoFactorRegenPassword">Contraseña</label>
+                  <input id="twoFactorRegenPassword" type="password" autocomplete="current-password" />
+                </div>
+                <button type="submit" class="btn-secondary">Regenerar códigos</button>
+              </form>
+              <form id="twoFactorDisableForm" class="auth-form account-2fa-disable">
+                <p class="auth-subtitle">Desactivar verificación en 2 pasos.</p>
+                <div class="auth-field">
+                  <label for="twoFactorDisableCode">Código (app o respaldo)</label>
+                  <input id="twoFactorDisableCode" type="text" placeholder="000000 o XXXX-XXXX" />
+                </div>
+                <div class="auth-field">
+                  <label for="twoFactorDisablePassword">Contraseña</label>
+                  <input id="twoFactorDisablePassword" type="password" autocomplete="current-password" />
+                </div>
+                <button type="submit" class="btn-secondary">Desactivar 2FA</button>
+              </form>
+            </div>
+          </section>
+
           <section class="account-section">
             <h3>Sesión</h3>
             <p class="auth-subtitle account-section__hint">

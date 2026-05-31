@@ -8,6 +8,11 @@ function showMessage(text, type = "info") {
   el.className = `auth-message auth-message--${type}`;
 }
 
+function hideMessage() {
+  const el = document.getElementById("accountMessage");
+  if (el) el.hidden = true;
+}
+
 function applyTheme(theme) {
   const t = theme === "dark" ? "dark" : "light";
   document.documentElement.setAttribute("data-theme", t);
@@ -124,6 +129,8 @@ async function init() {
   document.getElementById("accountEmail").textContent = user.email;
   document.getElementById("accountVerified").textContent = user.emailVerified ? "Verificado" : "Pendiente";
 
+  await initTwoFactor();
+
   document.getElementById("profileForm")?.addEventListener("submit", async (ev) => {
     ev.preventDefault();
     const displayName = document.getElementById("displayName").value.trim();
@@ -181,6 +188,167 @@ async function init() {
     await fetch("/api/auth/sessions", window.EyeAuth.fetchJsonOpts({ method: "DELETE" }));
     window.EyeAuth.clearSessionToken();
     window.location.replace("/login.html");
+  });
+}
+
+function renderBackupCodes(codes) {
+  const list = document.getElementById("twoFactorBackupList");
+  const panel = document.getElementById("twoFactorBackupPanel");
+  if (!list || !panel) return;
+  list.innerHTML = "";
+  for (const code of codes || []) {
+    const li = document.createElement("li");
+    li.textContent = code;
+    list.appendChild(li);
+  }
+  panel.hidden = !codes?.length;
+}
+
+function renderTwoFactorUi(state) {
+  const status = document.getElementById("twoFactorStatus");
+  const backupCount = document.getElementById("twoFactorBackupCount");
+  const disabledPanel = document.getElementById("twoFactorDisabledPanel");
+  const enabledPanel = document.getElementById("twoFactorEnabledPanel");
+  const setupPanel = document.getElementById("twoFactorSetupPanel");
+
+  if (status) status.textContent = state.enabled ? "Activada" : "Desactivada";
+  if (backupCount) backupCount.textContent = String(state.backupCodesRemaining ?? 0);
+  if (disabledPanel) disabledPanel.hidden = Boolean(state.enabled);
+  if (enabledPanel) enabledPanel.hidden = !state.enabled;
+  if (setupPanel && state.enabled) setupPanel.hidden = true;
+  if (document.getElementById("accountPhone")) {
+    document.getElementById("accountPhone").value = state.phone || "";
+  }
+}
+
+async function loadTwoFactorState() {
+  const res = await fetch("/api/auth/2fa", window.EyeAuth.fetchOpts());
+  if (!res.ok) throw new Error("No se pudo cargar 2FA");
+  return res.json();
+}
+
+async function initTwoFactor() {
+  try {
+    const state = await loadTwoFactorState();
+    renderTwoFactorUi(state);
+  } catch (e) {
+    showMessage(e.message, "error");
+  }
+
+  document.getElementById("phoneForm")?.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const phone = document.getElementById("accountPhone").value.trim();
+    try {
+      const res = await fetch(
+        "/api/auth/2fa/phone",
+        window.EyeAuth.fetchJsonOpts({
+          method: "PATCH",
+          body: JSON.stringify({ phone }),
+        })
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Error");
+      showMessage("Teléfono guardado.", "success");
+    } catch (e) {
+      showMessage(e.message, "error");
+    }
+  });
+
+  document.getElementById("twoFactorSetupBtn")?.addEventListener("click", async () => {
+    hideMessage();
+    try {
+      const res = await fetch("/api/auth/2fa/setup", window.EyeAuth.fetchJsonOpts({ method: "POST" }));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Error");
+      document.getElementById("twoFactorDisabledPanel").hidden = true;
+      const setupPanel = document.getElementById("twoFactorSetupPanel");
+      if (setupPanel) setupPanel.hidden = false;
+      const qr = document.getElementById("twoFactorQr");
+      const secret = document.getElementById("twoFactorSecret");
+      if (qr) qr.src = data.qrDataUrl;
+      if (secret) secret.textContent = data.secret;
+    } catch (e) {
+      showMessage(e.message, "error");
+    }
+  });
+
+  document.getElementById("twoFactorSetupCancelBtn")?.addEventListener("click", async () => {
+    document.getElementById("twoFactorSetupPanel").hidden = true;
+    document.getElementById("twoFactorDisabledPanel").hidden = false;
+    renderBackupCodes([]);
+  });
+
+  document.getElementById("twoFactorEnableForm")?.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const code = document.getElementById("twoFactorEnableCode").value.trim();
+    const password = document.getElementById("twoFactorEnablePassword").value;
+    try {
+      const res = await fetch(
+        "/api/auth/2fa/enable",
+        window.EyeAuth.fetchJsonOpts({
+          method: "POST",
+          body: JSON.stringify({ code, password }),
+        })
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Error");
+      document.getElementById("twoFactorSetupPanel").hidden = true;
+      renderBackupCodes(data.backupCodes);
+      const state = await loadTwoFactorState();
+      renderTwoFactorUi(state);
+      showMessage("Verificación en 2 pasos activada. Guarda los códigos de respaldo.", "success");
+      document.getElementById("twoFactorEnableForm").reset();
+    } catch (e) {
+      showMessage(e.message, "error");
+    }
+  });
+
+  document.getElementById("twoFactorDisableForm")?.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const code = document.getElementById("twoFactorDisableCode").value.trim();
+    const password = document.getElementById("twoFactorDisablePassword").value;
+    try {
+      const res = await fetch(
+        "/api/auth/2fa/disable",
+        window.EyeAuth.fetchJsonOpts({
+          method: "POST",
+          body: JSON.stringify({ code, password }),
+        })
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Error");
+      renderBackupCodes([]);
+      const state = await loadTwoFactorState();
+      renderTwoFactorUi(state);
+      document.getElementById("twoFactorDisableForm").reset();
+      showMessage("Verificación en 2 pasos desactivada.", "success");
+    } catch (e) {
+      showMessage(e.message, "error");
+    }
+  });
+
+  document.getElementById("twoFactorRegenForm")?.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const code = document.getElementById("twoFactorRegenCode").value.trim();
+    const password = document.getElementById("twoFactorRegenPassword").value;
+    try {
+      const res = await fetch(
+        "/api/auth/2fa/backup/regenerate",
+        window.EyeAuth.fetchJsonOpts({
+          method: "POST",
+          body: JSON.stringify({ code, password }),
+        })
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Error");
+      renderBackupCodes(data.backupCodes);
+      const state = await loadTwoFactorState();
+      renderTwoFactorUi(state);
+      document.getElementById("twoFactorRegenForm").reset();
+      showMessage("Códigos de respaldo regenerados.", "success");
+    } catch (e) {
+      showMessage(e.message, "error");
+    }
   });
 }
 
