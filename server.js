@@ -70,6 +70,26 @@ function unlinkStorageKey(storageKey) {
   if (p) fs.unlink(p, () => {});
 }
 
+const PREVIEW_IMAGE_EXT = new Set(["png", "jpg", "jpeg", "gif", "webp", "bmp", "ico", "avif"]);
+
+function isPreviewableImage(name, mimeType) {
+  const mime = String(mimeType || "").toLowerCase();
+  if (mime === "image/svg+xml") return false;
+  if (mime.startsWith("image/")) return true;
+  const ext = path.extname(String(name || "")).slice(1).toLowerCase();
+  return ext !== "svg" && PREVIEW_IMAGE_EXT.has(ext);
+}
+
+function sendStoredFileInline(res, row, filePath) {
+  res.setHeader(
+    "Content-Disposition",
+    `inline; filename*=UTF-8''${encodeURIComponent(row.name)}`
+  );
+  if (row.mime_type) res.setHeader("Content-Type", row.mime_type);
+  res.setHeader("Cache-Control", "private, max-age=3600");
+  fs.createReadStream(filePath).pipe(res);
+}
+
 async function initDb() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
@@ -606,6 +626,37 @@ app.get("/api/files/:id/download", requireAuth, async (req, res) => {
   }
 });
 
+app.get("/api/files/:id/preview", requireAuth, async (req, res) => {
+  if (!UUID_RE.test(req.params.id)) {
+    return res.status(400).end();
+  }
+  const { id } = req.params;
+  if (!(await itemBelongsToUser(id, req.user.id))) {
+    return res.status(404).end();
+  }
+  try {
+    const { rows } = await pool.query(
+      `SELECT name, type, storage_key, mime_type FROM items WHERE id = $1::uuid AND user_id = $2::uuid`,
+      [id, req.user.id]
+    );
+    if (!rows.length || rows[0].type !== "file" || !rows[0].storage_key) {
+      return res.status(404).end();
+    }
+    const row = rows[0];
+    if (!isPreviewableImage(row.name, row.mime_type)) {
+      return res.status(415).end();
+    }
+    const filePath = resolveUploadPath(row.storage_key);
+    if (!filePath || !fs.existsSync(filePath)) {
+      return res.status(404).end();
+    }
+    sendStoredFileInline(res, row, filePath);
+  } catch (e) {
+    console.error(e);
+    res.status(500).end();
+  }
+});
+
 app.post("/api/shares", requireAuth, async (req, res) => {
   const folderId = req.body?.folderId;
   if (!UUID_RE.test(String(folderId || ""))) {
@@ -737,6 +788,45 @@ app.get("/api/share/:token/file/:id/download", async (req, res) => {
     );
     if (row.mime_type) res.setHeader("Content-Type", row.mime_type);
     fs.createReadStream(filePath).pipe(res);
+  } catch (e) {
+    console.error(e);
+    res.status(500).end();
+  }
+});
+
+app.get("/api/share/:token/file/:id/preview", async (req, res) => {
+  if (!TOKEN_RE.test(req.params.token) || !UUID_RE.test(req.params.id)) {
+    return res.status(400).end();
+  }
+  const { id } = req.params;
+  try {
+    const { rows: sr } = await pool.query(
+      `SELECT s.folder_id FROM shares s WHERE s.token = $1`,
+      [req.params.token]
+    );
+    if (!sr.length) {
+      return res.status(404).end();
+    }
+    const shareRootId = sr[0].folder_id;
+    if (!(await isUnderSharedFolder(shareRootId, id))) {
+      return res.status(404).end();
+    }
+    const { rows } = await pool.query(
+      `SELECT name, type, storage_key, mime_type FROM items WHERE id = $1::uuid`,
+      [id]
+    );
+    if (!rows.length || rows[0].type !== "file" || !rows[0].storage_key) {
+      return res.status(404).end();
+    }
+    const row = rows[0];
+    if (!isPreviewableImage(row.name, row.mime_type)) {
+      return res.status(415).end();
+    }
+    const filePath = resolveUploadPath(row.storage_key);
+    if (!filePath || !fs.existsSync(filePath)) {
+      return res.status(404).end();
+    }
+    sendStoredFileInline(res, row, filePath);
   } catch (e) {
     console.error(e);
     res.status(500).end();

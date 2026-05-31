@@ -155,6 +155,16 @@ function downloadUrlForSharedItem(item) {
   return `/api/share/${encodeURIComponent(token)}/item/${encodeURIComponent(item.id)}/download`;
 }
 
+function sharedPreviewUrl(item) {
+  return `/api/share/${encodeURIComponent(token)}/file/${encodeURIComponent(item.id)}/preview`;
+}
+
+function formatSharedFileInfo(item) {
+  if (item.itemType === "folder") return `Carpeta · ${formatDate(item.addedAt)}`;
+  const kind = window.EyeFiles?.getFileKindLabel(item) || "Archivo";
+  return `${kind} · ${formatSize(item.size)} · ${formatDate(item.addedAt)}`;
+}
+
 function downloadSelection() {
   const items = currentSelectionItems();
   if (!items.length) return;
@@ -214,21 +224,27 @@ async function loadList() {
   const visible = getFilteredList();
   for (const [idx, item] of visible.entries()) {
     const isFolder = item.itemType === "folder";
+    const isImage = !isFolder && window.EyeFiles?.isImageItem(item);
     const node = cardTemplate.content.firstElementChild.cloneNode(true);
     const icon = node.querySelector(".file-icon");
     node.querySelector(".file-name").textContent = item.name;
-    node.querySelector(".file-info").textContent = isFolder
-      ? `Carpeta · ${formatDate(item.addedAt)}`
-      : `${formatSize(item.size)} · ${formatDate(item.addedAt)}`;
+    node.querySelector(".file-info").textContent = formatSharedFileInfo(item);
     if (isFolder) {
       node.classList.add("folder");
     }
-    if (window.EyeIcons) {
+    if (isImage) {
+      node.classList.add("file-card--image");
+    }
+    if (window.EyeFiles) {
+      window.EyeFiles.applyFileCardIcon(icon, item, isImage ? sharedPreviewUrl(item) : "");
+    } else if (window.EyeIcons) {
       window.EyeIcons.setFileIcon(icon, isFolder ? "folder" : "file", item.name || "");
     }
     const go = () => {
       if (isFolder) {
         navigateSharePath([...pathWithin, { id: item.id, name: item.name }], { push: true });
+      } else if (isImage) {
+        window.open(sharedPreviewUrl(item), "_blank", "noopener,noreferrer");
       } else {
         window.location.assign(downloadUrlForSharedItem(item));
       }

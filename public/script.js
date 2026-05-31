@@ -1362,6 +1362,16 @@ async function collectFromDataTransfer(dataTransfer) {
   return out;
 }
 
+function formatFileInfoLine(item) {
+  if (item.itemType === "folder") return `Carpeta · ${formatDate(item.addedAt)}`;
+  const kind = window.EyeFiles?.getFileKindLabel(item) || "Archivo";
+  return `${kind} · ${formatSize(item.size)} · ${formatDate(item.addedAt)}`;
+}
+
+function filePreviewUrl(item) {
+  return `/api/files/${item.id}/preview`;
+}
+
 function findItemById(id) {
   return allItems.find((x) => String(x.id) === String(id));
 }
@@ -1385,6 +1395,9 @@ async function openItem(item) {
   }
   if (item.itemType === "folder") {
     navigateToPath([...pathSegments, { id: item.id, name: item.name }], { push: true });
+  } else if (window.EyeFiles?.isImageItem(item)) {
+    clearSelection();
+    window.open(filePreviewUrl(item), "_blank", "noopener,noreferrer");
   } else {
     clearSelection();
     window.location.assign(`/api/files/${item.id}/download`);
@@ -1396,9 +1409,10 @@ async function openItem(item) {
  */
 async function showItemInfo(item) {
   const isFolder = item.itemType === "folder";
+  const kind = window.EyeFiles?.getFileKindLabel(item) || (isFolder ? "Carpeta" : "Archivo");
   const line1 = isFolder
     ? `Carpeta: ${item.name}`
-    : `Archivo: ${item.name} (${formatSize(item.size)})`;
+    : `${kind}: ${item.name} (${formatSize(item.size)})`;
   const lines = [line1, `Añadido: ${formatDate(item.addedAt)}`, `Id: ${item.id}`];
   await appAlert(lines.join("\n"), "Atajos");
 }
@@ -1811,19 +1825,23 @@ function renderItems(list) {
 
   for (const item of list) {
     const isFolder = item.itemType === "folder";
+    const isImage = !isFolder && window.EyeFiles?.isImageItem(item);
     const node = cardTemplate.content.firstElementChild.cloneNode(true);
     const icon = node.querySelector(".file-icon");
     const fileInfo = node.querySelector(".file-info");
 
     node.querySelector(".file-name").textContent = item.name;
-    fileInfo.textContent = isFolder
-      ? `Carpeta · ${formatDate(item.addedAt)}`
-      : `${formatSize(item.size)} · ${formatDate(item.addedAt)}`;
+    fileInfo.textContent = formatFileInfoLine(item);
 
     if (isFolder) {
       node.classList.add("folder");
     }
-    if (window.EyeIcons) {
+    if (isImage) {
+      node.classList.add("file-card--image");
+    }
+    if (window.EyeFiles) {
+      window.EyeFiles.applyFileCardIcon(icon, item, isImage ? filePreviewUrl(item) : "");
+    } else if (window.EyeIcons) {
       window.EyeIcons.setFileIcon(icon, isFolder ? "folder" : "file", item.name || "");
     }
 
