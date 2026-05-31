@@ -21,33 +21,73 @@
           <h1>Eyedrive</h1>
         </div>
 
+        <div class="auth-steps" aria-label="Pasos del inicio de sesión">
+          <span class="auth-step auth-step--active" id="loginStepLabel1">1. Correo y contraseña</span>
+          <span class="auth-step" id="loginStepLabel2">2. Código de acceso</span>
+        </div>
+
         <div id="authMessage" class="auth-message" hidden></div>
 
-        <h2 class="auth-title">Inicia sesión</h2>
-        <p class="auth-subtitle">Entra con tu correo y contraseña. Te enviaremos un código para confirmar el acceso.</p>
-
-        <form id="loginForm" class="auth-form">
-          <div class="auth-field">
-            <label for="loginEmail">Correo electrónico</label>
-            <input id="loginEmail" type="email" required autocomplete="email" placeholder="tu@correo.com" />
-          </div>
-          <div class="auth-field">
-            <label for="loginPassword">Contraseña</label>
-            <input
-              id="loginPassword"
-              type="password"
-              required
-              autocomplete="current-password"
-              placeholder="Tu contraseña"
-            />
-          </div>
-          <p class="auth-forgot">
-            <a href="/recuperar.html">¿Olvidaste tu contraseña?</a>
+        <section id="loginStepCredentials">
+          <h2 class="auth-title">Inicia sesión</h2>
+          <p class="auth-subtitle">
+            Entra con tu correo y contraseña. Después te pediremos el código que enviamos a tu correo.
           </p>
-          <div class="auth-actions">
-            <button type="submit" class="btn-primary" id="loginSubmitBtn">Entrar</button>
-          </div>
-        </form>
+
+          <form id="loginForm" class="auth-form">
+            <div class="auth-field">
+              <label for="loginEmail">Correo electrónico</label>
+              <input id="loginEmail" type="email" required autocomplete="email" placeholder="tu@correo.com" />
+            </div>
+            <div class="auth-field">
+              <label for="loginPassword">Contraseña</label>
+              <input
+                id="loginPassword"
+                type="password"
+                required
+                autocomplete="current-password"
+                placeholder="Tu contraseña"
+              />
+            </div>
+            <p class="auth-forgot">
+              <a href="/recuperar.html">¿Olvidaste tu contraseña?</a>
+            </p>
+            <div class="auth-actions">
+              <button type="submit" class="btn-primary" id="loginSubmitBtn">Continuar</button>
+            </div>
+          </form>
+        </section>
+
+        <section id="loginStepCode" hidden>
+          <h2 class="auth-title">Confirma tu acceso</h2>
+          <p class="auth-subtitle">
+            Hemos enviado un código de 6 dígitos a <strong id="loginEmailLabel">tu correo</strong>.
+          </p>
+          <p class="auth-spam-hint" role="note">
+            Si no recibes el correo en unos minutos, revisa la carpeta de <strong>spam</strong> o correo no deseado.
+          </p>
+
+          <form id="loginConfirmForm" class="auth-form">
+            <div class="auth-field">
+              <label for="loginCode">Código de verificación</label>
+              <input
+                id="loginCode"
+                class="auth-code-input"
+                type="text"
+                inputmode="numeric"
+                pattern="\d{6}"
+                maxlength="6"
+                required
+                placeholder="000000"
+              />
+            </div>
+            <div class="auth-actions">
+              <button type="submit" class="btn-primary" id="loginConfirmBtn">Entrar</button>
+              <button type="button" id="loginResendBtn" class="btn-secondary">Reenviar código</button>
+              <button type="button" id="loginBackBtn" class="btn-secondary">Volver</button>
+            </div>
+          </form>
+        </section>
 
         <p class="auth-switch">
           ¿No tienes cuenta?
