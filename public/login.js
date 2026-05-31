@@ -15,6 +15,13 @@ const loginCodeInput = document.getElementById("loginCode");
 const LOGIN_EMAIL_KEY = "eyedrive.loginEmail";
 let pendingLoginEmail = sessionStorage.getItem(LOGIN_EMAIL_KEY) || "";
 
+function authJsonPayload(payload) {
+  return JSON.stringify({
+    ...(payload || {}),
+    deviceId: window.EyeAuth.getDeviceId(),
+  });
+}
+
 function showMessage(text, type = "info") {
   if (!authMessage) return;
   authMessage.hidden = false;
@@ -83,7 +90,7 @@ loginForm?.addEventListener("submit", async (ev) => {
       "/api/auth/login",
       window.EyeAuth.fetchJsonOpts({
         method: "POST",
-        body: window.EyeAuth.authJsonBody({ email, password }),
+        body: authJsonPayload({ email, password }),
       })
     );
     const data = await res.json().catch(() => ({}));
@@ -133,7 +140,7 @@ loginConfirmForm?.addEventListener("submit", async (ev) => {
       "/api/auth/login/confirm",
       window.EyeAuth.fetchJsonOpts({
         method: "POST",
-        body: window.EyeAuth.authJsonBody({ email: pendingLoginEmail, code }),
+        body: authJsonPayload({ email: pendingLoginEmail, code }),
       })
     );
     const data = await res.json().catch(() => ({}));
@@ -164,7 +171,7 @@ document.getElementById("loginResendBtn")?.addEventListener("click", async () =>
       "/api/auth/login/resend",
       window.EyeAuth.fetchJsonOpts({
         method: "POST",
-        body: window.EyeAuth.authJsonBody({ email: pendingLoginEmail }),
+        body: authJsonPayload({ email: pendingLoginEmail }),
       })
     );
     const data = await res.json().catch(() => ({}));

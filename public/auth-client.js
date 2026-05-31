@@ -66,6 +66,10 @@
     fetchOpts,
     fetchJsonOpts,
     authJsonBody,
+    auth: {
+      JsonBody: authJsonBody,
+      jsonBody: authJsonBody,
+    },
     applySessionFromResponse,
   };
 })();

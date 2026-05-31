@@ -95,6 +95,13 @@ async function loadAccount() {
   return res.json();
 }
 
+function authJsonPayload(payload) {
+  return JSON.stringify({
+    ...(payload || {}),
+    deviceId: window.EyeAuth.getDeviceId(),
+  });
+}
+
 function formatDeviceDate(value) {
   if (!value) return "—";
   try {
@@ -203,7 +210,7 @@ async function init() {
           "/api/auth/account/security",
           window.EyeAuth.fetchJsonOpts({
             method: "PATCH",
-            body: window.EyeAuth.authJsonBody({ loginCodeEnabled }),
+            body: authJsonPayload({ loginCodeEnabled }),
           })
         );
         const data = await res.json().catch(() => ({}));
