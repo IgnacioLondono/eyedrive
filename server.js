@@ -45,6 +45,31 @@ function ensureUploadDir() {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
 
+function userUploadDir(userId) {
+  const dir = path.join(UPLOAD_DIR, String(userId));
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function buildStorageKey(userId, filename) {
+  return path.join(String(userId), String(filename)).replace(/\\/g, "/");
+}
+
+function resolveUploadPath(storageKey) {
+  if (!storageKey) return null;
+  const key = String(storageKey).replace(/\\/g, "/");
+  if (key.includes("..")) return null;
+  const abs = path.resolve(UPLOAD_DIR, key);
+  const root = path.resolve(UPLOAD_DIR);
+  if (abs !== root && !abs.startsWith(`${root}${path.sep}`)) return null;
+  return abs;
+}
+
+function unlinkStorageKey(storageKey) {
+  const p = resolveUploadPath(storageKey);
+  if (p) fs.unlink(p, () => {});
+}
+
 async function initDb() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
@@ -142,9 +167,12 @@ async function waitForDb() {
 }
 
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    ensureUploadDir();
-    cb(null, UPLOAD_DIR);
+  destination: (req, _file, cb) => {
+    if (!req.user?.id) {
+      cb(new Error("Inicia sesión para subir archivos"));
+      return;
+    }
+    cb(null, userUploadDir(req.user.id));
   },
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname || "") || "";
@@ -366,18 +394,19 @@ app.post("/api/upload", requireAuth, upload.array("files", MAX_FILES_PER_REQUEST
       if (useTree) {
         const { folders, fileName } = splitRelToFoldersAndFile(norm);
         if (!fileName) {
-          fs.unlink(path.join(UPLOAD_DIR, f.filename), () => {});
+          unlinkStorageKey(buildStorageKey(req.user.id, f.filename));
           continue;
         }
         targetParent = await ensureFolderChainDb(client, req.user.id, baseParentId, folders);
         displayName = fileName;
       }
 
+      const storageKey = buildStorageKey(req.user.id, f.filename);
       const { rows } = await client.query(
         `INSERT INTO items (user_id, parent_id, name, type, size, storage_key, mime_type)
          VALUES ($6::uuid, $1::uuid, $2, 'file', $3, $4, $5)
          RETURNING id, name, type, size, created_at, mime_type`,
-        [targetParent, displayName, f.size, f.filename, f.mimetype || null, req.user.id]
+        [targetParent, displayName, f.size, storageKey, f.mimetype || null, req.user.id]
       );
       const r = rows[0];
       created.push({
@@ -399,8 +428,7 @@ app.post("/api/upload", requireAuth, upload.array("files", MAX_FILES_PER_REQUEST
       console.error(rollbackErr);
     }
     for (const f of files) {
-      const p = path.join(UPLOAD_DIR, f.filename);
-      fs.unlink(p, () => {});
+      unlinkStorageKey(buildStorageKey(req.user.id, f.filename));
     }
     if (e.code === "BAD_PATH") {
       return res.status(400).json({ error: "Ruta no válida" });
@@ -471,8 +499,8 @@ async function streamFolderZip(res, folderId, folderName) {
         archive.append("", { name: nextRel });
         walk(k.id, nextRel);
       } else if (k.type === "file" && k.storage_key) {
-        const filePath = path.join(UPLOAD_DIR, k.storage_key);
-        if (!fs.existsSync(filePath)) continue;
+        const filePath = resolveUploadPath(k.storage_key);
+        if (!filePath || !fs.existsSync(filePath)) continue;
         const safe = sanitizeArchivePart(k.name, "archivo");
         archive.file(filePath, { name: `${relBase}${safe}` });
       }
@@ -498,8 +526,8 @@ app.get("/api/items/:id/download", requireAuth, async (req, res) => {
     if (!rows.length) return res.status(404).end();
     const row = rows[0];
     if (row.type === "file") {
-      const filePath = path.join(UPLOAD_DIR, row.storage_key || "");
-      if (!row.storage_key || !fs.existsSync(filePath)) return res.status(404).end();
+      const filePath = resolveUploadPath(row.storage_key || "");
+      if (!row.storage_key || !filePath || !fs.existsSync(filePath)) return res.status(404).end();
       res.setHeader(
         "Content-Disposition",
         `attachment; filename*=UTF-8''${encodeURIComponent(row.name)}`
@@ -535,8 +563,8 @@ app.get("/api/files/:id/download", requireAuth, async (req, res) => {
       return res.status(404).end();
     }
     const row = rows[0];
-    const filePath = path.join(UPLOAD_DIR, row.storage_key);
-    if (!fs.existsSync(filePath)) {
+    const filePath = resolveUploadPath(row.storage_key);
+    if (!filePath || !fs.existsSync(filePath)) {
       return res.status(404).end();
     }
     res.setHeader(
@@ -672,8 +700,8 @@ app.get("/api/share/:token/file/:id/download", async (req, res) => {
       return res.status(404).end();
     }
     const row = rows[0];
-    const filePath = path.join(UPLOAD_DIR, row.storage_key);
-    if (!fs.existsSync(filePath)) {
+    const filePath = resolveUploadPath(row.storage_key);
+    if (!filePath || !fs.existsSync(filePath)) {
       return res.status(404).end();
     }
     res.setHeader(
@@ -712,8 +740,8 @@ app.get("/api/share/:token/item/:id/download", async (req, res) => {
     if (!rows.length) return res.status(404).end();
     const row = rows[0];
     if (row.type === "file") {
-      const filePath = path.join(UPLOAD_DIR, row.storage_key || "");
-      if (!row.storage_key || !fs.existsSync(filePath)) return res.status(404).end();
+      const filePath = resolveUploadPath(row.storage_key || "");
+      if (!row.storage_key || !filePath || !fs.existsSync(filePath)) return res.status(404).end();
       res.setHeader(
         "Content-Disposition",
         `attachment; filename*=UTF-8''${encodeURIComponent(row.name)}`
@@ -869,8 +897,8 @@ app.delete("/api/items/:id", requireAuth, async (req, res) => {
       [id, req.user.id]
     );
     for (const row of rows) {
-      const p = path.join(UPLOAD_DIR, row.storage_key);
-      fs.unlink(p, () => {});
+      const p = resolveUploadPath(row.storage_key);
+      if (p) fs.unlink(p, () => {});
     }
     const del = await pool.query(`DELETE FROM items WHERE id = $1::uuid AND user_id = $2::uuid`, [
       id,

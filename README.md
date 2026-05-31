@@ -13,7 +13,7 @@ Los datos se guardan en:
 ```
 /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Eyedrive/
 ├── postgres/   # base de datos
-└── uploads/    # archivos subidos
+└── uploads/    # archivos subidos (carpeta por usuario: uploads/{user-id}/)
 ```
 
 1. Clona o copia el proyecto al servidor.
