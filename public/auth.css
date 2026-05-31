@@ -271,8 +271,10 @@ html[data-theme="dark"] .user-menu-dropdown {
 }
 
 html[data-theme="dark"] .user-menu-dropdown a:hover,
-html[data-theme="dark"] .user-menu-dropdown button:hover {
-  background: rgba(109, 91, 253, 0.14);
+html[data-theme="dark"] .user-menu-dropdown button:hover,
+html[data-theme="dark"] .user-menu-dropdown a[aria-current="page"] {
+  background: #ffffff;
+  color: #0f0f12;
 }
 
 .account-row {
@@ -360,8 +362,10 @@ html[data-theme="dark"] .user-menu-dropdown button:hover {
 }
 
 .user-menu-dropdown a:hover,
-.user-menu-dropdown button:hover {
-  background: rgba(109, 91, 253, 0.08);
+.user-menu-dropdown button:hover,
+.user-menu-dropdown a[aria-current="page"] {
+  background: #0f0f12;
+  color: #ffffff;
 }
 
 .user-menu-email {
