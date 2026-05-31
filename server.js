@@ -99,11 +99,18 @@ async function initDb() {
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       email TEXT NOT NULL,
       code TEXT NOT NULL,
-      purpose TEXT NOT NULL CHECK (purpose IN ('register', 'login')),
+      purpose TEXT NOT NULL CHECK (purpose IN ('register', 'login', 'reset')),
       expires_at TIMESTAMPTZ NOT NULL,
       used_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+  `);
+  await pool.query(`
+    ALTER TABLE email_codes DROP CONSTRAINT IF EXISTS email_codes_purpose_check;
+  `);
+  await pool.query(`
+    ALTER TABLE email_codes ADD CONSTRAINT email_codes_purpose_check
+    CHECK (purpose IN ('register', 'login', 'reset'));
   `);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS sessions (

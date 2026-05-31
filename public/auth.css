@@ -115,6 +115,22 @@
   color: var(--secondary);
 }
 
+.auth-forgot {
+  margin: -4px 0 0;
+  text-align: right;
+  font-size: 0.875rem;
+}
+
+.auth-forgot a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-forgot a:hover {
+  text-decoration: underline;
+}
+
 .auth-switch {
   margin-top: 20px;
   text-align: center;

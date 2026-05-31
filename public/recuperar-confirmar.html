@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nueva contraseña — Eyedrive</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;0,9..40,800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="auth.css" />
+  </head>
+  <body>
+    <div class="auth-page">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <span class="brand-icon" id="brandIcon" aria-hidden="true"></span>
+          <h1>Eyedrive</h1>
+        </div>
+
+        <div class="auth-steps" aria-label="Pasos de recuperación">
+          <span class="auth-step auth-step--done">1. Correo</span>
+          <span class="auth-step auth-step--active">2. Nueva contraseña</span>
+        </div>
+
+        <div id="authMessage" class="auth-message" hidden></div>
+
+        <h2 class="auth-title">Crea tu nueva contraseña</h2>
+        <p class="auth-subtitle">
+          Hemos enviado un código de 6 dígitos a <strong id="resetEmailLabel">tu correo</strong>.
+        </p>
+
+        <form id="resetConfirmForm" class="auth-form">
+          <div class="auth-field">
+            <label for="resetCode">Código de verificación</label>
+            <input
+              id="resetCode"
+              class="auth-code-input"
+              type="text"
+              inputmode="numeric"
+              pattern="\d{6}"
+              maxlength="6"
+              required
+              placeholder="000000"
+              autofocus
+            />
+          </div>
+          <div class="auth-field">
+            <label for="resetPassword">Nueva contraseña</label>
+            <input
+              id="resetPassword"
+              type="password"
+              required
+              minlength="8"
+              autocomplete="new-password"
+              placeholder="Mínimo 8 caracteres"
+            />
+          </div>
+          <div class="auth-field">
+            <label for="resetPasswordConfirm">Confirmar contraseña</label>
+            <input
+              id="resetPasswordConfirm"
+              type="password"
+              required
+              minlength="8"
+              autocomplete="new-password"
+              placeholder="Repite la contraseña"
+            />
+          </div>
+          <div class="auth-actions">
+            <button type="submit" class="btn-primary" id="resetConfirmBtn">Guardar y entrar</button>
+            <button type="button" id="resetResendBtn" class="btn-secondary">Reenviar código</button>
+          </div>
+        </form>
+
+        <p class="auth-switch">
+          <a href="/recuperar.html">Usar otro correo</a>
+        </p>
+      </div>
+    </div>
+    <script src="auth-client.js"></script>
+    <script src="icons.js"></script>
+    <script src="recuperar-confirmar.js"></script>
+  </body>
+</html>

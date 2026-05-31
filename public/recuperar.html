@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Iniciar sesión — Eyedrive</title>
+    <title>Recuperar contraseña — Eyedrive</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -23,40 +23,28 @@
 
         <div id="authMessage" class="auth-message" hidden></div>
 
-        <h2 class="auth-title">Inicia sesión</h2>
-        <p class="auth-subtitle">Entra con el correo y la contraseña de tu cuenta.</p>
+        <h2 class="auth-title">Recuperar contraseña</h2>
+        <p class="auth-subtitle">
+          Introduce tu correo y te enviaremos un código para crear una contraseña nueva.
+        </p>
 
-        <form id="loginForm" class="auth-form">
+        <form id="resetRequestForm" class="auth-form">
           <div class="auth-field">
-            <label for="loginEmail">Correo electrónico</label>
-            <input id="loginEmail" type="email" required autocomplete="email" placeholder="tu@correo.com" />
+            <label for="resetEmail">Correo electrónico</label>
+            <input id="resetEmail" type="email" required autocomplete="email" placeholder="tu@correo.com" />
           </div>
-          <div class="auth-field">
-            <label for="loginPassword">Contraseña</label>
-            <input
-              id="loginPassword"
-              type="password"
-              required
-              autocomplete="current-password"
-              placeholder="Tu contraseña"
-            />
-          </div>
-          <p class="auth-forgot">
-            <a href="/recuperar.html">¿Olvidaste tu contraseña?</a>
-          </p>
           <div class="auth-actions">
-            <button type="submit" class="btn-primary" id="loginSubmitBtn">Entrar</button>
+            <button type="submit" class="btn-primary" id="resetRequestBtn">Enviar código</button>
           </div>
         </form>
 
         <p class="auth-switch">
-          ¿No tienes cuenta?
-          <a href="/registro.html">Crear cuenta</a>
+          <a href="/login.html">Volver a iniciar sesión</a>
         </p>
       </div>
     </div>
     <script src="auth-client.js"></script>
     <script src="icons.js"></script>
-    <script src="login.js"></script>
+    <script src="recuperar.js"></script>
   </body>
 </html>
