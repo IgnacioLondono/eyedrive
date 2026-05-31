@@ -1,0 +1,5 @@
+#!/bin/sh
+# Quita la atribución automática de Cursor en los mensajes de commit.
+if [ -f "$1" ]; then
+  grep -v 'Co-authored-by: Cursor' "$1" > "$1.tmp" && mv "$1.tmp" "$1"
+fi
