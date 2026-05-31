@@ -110,39 +110,7 @@ async function initDb() {
   `);
   await pool.query(`
     ALTER TABLE email_codes ADD CONSTRAINT email_codes_purpose_check
-    CHECK (purpose IN ('register', 'login', 'reset', '2fa_login'));
-  `);
-  await pool.query(`
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT;
-  `);
-  await pool.query(`
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret TEXT;
-  `);
-  await pool.query(`
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_pending_secret TEXT;
-  `);
-  await pool.query(`
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled BOOLEAN NOT NULL DEFAULT FALSE;
-  `);
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS user_backup_codes (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      code_hash TEXT NOT NULL,
-      used_at TIMESTAMPTZ,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `);
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS pending_2fa_logins (
-      token TEXT PRIMARY KEY,
-      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      expires_at TIMESTAMPTZ NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `);
-  await pool.query(`
-    CREATE INDEX IF NOT EXISTS pending_2fa_logins_user_idx ON pending_2fa_logins (user_id);
+    CHECK (purpose IN ('register', 'login', 'reset'));
   `);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS sessions (

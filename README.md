@@ -47,8 +47,7 @@ Nginx actúa como proxy inverso (imagen propia en `nginx/` con la config incluid
 - **Registro**: nombre, correo y contraseña → código de 6 dígitos por email → confirmación.
 - **Inicio de sesión**: correo y contraseña.
 - **Recuperar contraseña** (`/recuperar.html`): correo → código por email → nueva contraseña.
-- **Verificación en 2 pasos** (`/cuenta.html`): app autenticadora en el teléfono (TOTP), código por correo o códigos de respaldo al iniciar sesión.
-- **Mi cuenta** (`/cuenta.html`): cambiar nombre, contraseña, teléfono, 2FA, cerrar sesión.
+- **Mi cuenta** (`/cuenta.html`): cambiar nombre, contraseña, cerrar sesión.
 
 Sin SMTP configurado, los códigos se imprimen en los logs del contenedor (solo para desarrollo).
 

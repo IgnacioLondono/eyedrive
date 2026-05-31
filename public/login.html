@@ -49,37 +49,6 @@
           </div>
         </form>
 
-        <form id="login2faForm" class="auth-form" hidden>
-          <h2 class="auth-title auth-title--step">Verificación en 2 pasos</h2>
-          <p class="auth-subtitle">Introduce el código de tu app autenticadora, de respaldo o por correo.</p>
-          <div class="auth-field">
-            <label for="login2faMethod">Método</label>
-            <select id="login2faMethod" class="auth-select">
-              <option value="totp">App autenticadora (teléfono)</option>
-              <option value="email">Código por correo</option>
-              <option value="backup">Código de respaldo</option>
-            </select>
-          </div>
-          <div class="auth-field">
-            <label for="login2faCode" id="login2faCodeLabel">Código de 6 dígitos</label>
-            <input
-              id="login2faCode"
-              class="auth-code-input"
-              type="text"
-              inputmode="numeric"
-              maxlength="9"
-              required
-              placeholder="000000"
-              autofocus
-            />
-          </div>
-          <div class="auth-actions auth-actions--2fa">
-            <button type="submit" class="btn-primary" id="login2faSubmitBtn">Verificar</button>
-            <button type="button" class="btn-secondary" id="login2faEmailBtn" hidden>Enviar código al correo</button>
-            <button type="button" class="btn-ghost" id="login2faBackBtn">Volver</button>
-          </div>
-        </form>
-
         <p class="auth-switch">
           ¿No tienes cuenta?
           <a href="/registro.html">Crear cuenta</a>
