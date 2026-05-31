@@ -180,9 +180,9 @@
 }
 
 .auth-step--active {
-  color: var(--primary);
-  border-color: rgba(109, 91, 253, 0.35);
-  background: rgba(109, 91, 253, 0.12);
+  color: var(--menu-hover-text);
+  border-color: var(--menu-hover-bg);
+  background: var(--menu-hover-bg);
 }
 
 .auth-step--done {
@@ -273,8 +273,8 @@ html[data-theme="dark"] .user-menu-dropdown {
 html[data-theme="dark"] .user-menu-dropdown a:hover,
 html[data-theme="dark"] .user-menu-dropdown button:hover,
 html[data-theme="dark"] .user-menu-dropdown a[aria-current="page"] {
-  background: #ffffff;
-  color: #0f0f12;
+  background: var(--menu-hover-bg);
+  color: var(--menu-hover-text);
 }
 
 .account-row {
@@ -364,8 +364,8 @@ html[data-theme="dark"] .user-menu-dropdown a[aria-current="page"] {
 .user-menu-dropdown a:hover,
 .user-menu-dropdown button:hover,
 .user-menu-dropdown a[aria-current="page"] {
-  background: #0f0f12;
-  color: #ffffff;
+  background: var(--menu-hover-bg);
+  color: var(--menu-hover-text);
 }
 
 .user-menu-email {
