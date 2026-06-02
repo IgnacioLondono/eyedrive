@@ -791,9 +791,12 @@ async function downloadSelectedFileItems() {
     return;
   }
   files.forEach((f, i) => {
-    setTimeout(() => {
-      window.open(`${location.origin}/api/files/${f.id}/download`, "_blank", "noopener,noreferrer");
-    }, i * 200);
+    window.setTimeout(() => {
+      const url = window.EyeAuth?.authGetUrl
+        ? window.EyeAuth.authGetUrl(`/api/files/${f.id}/download`)
+        : `${location.origin}/api/files/${f.id}/download`;
+      window.open(url, "_blank", "noopener,noreferrer");
+    }, i * 250);
   });
 }
 
@@ -1372,7 +1375,12 @@ function formatFileInfoLine(item) {
 }
 
 function filePreviewUrl(item) {
-  return `/api/files/${item.id}/preview`;
+  const path = `/api/files/${item.id}/preview`;
+  return window.EyeAuth?.authGetUrl ? window.EyeAuth.authGetUrl(path) : path;
+}
+
+function authDownloadUrl(path) {
+  return window.EyeAuth?.authGetUrl ? window.EyeAuth.authGetUrl(path) : path;
 }
 
 function findItemById(id) {
@@ -1403,7 +1411,7 @@ async function openItem(item) {
     window.open(filePreviewUrl(item), "_blank", "noopener,noreferrer");
   } else {
     clearSelection();
-    window.location.assign(`/api/files/${item.id}/download`);
+    window.location.assign(authDownloadUrl(`/api/files/${item.id}/download`));
   }
 }
 
@@ -1425,16 +1433,16 @@ function openFileDownloadNewTab(item) {
     openItem(item);
     return;
   }
-  const url = `${location.origin}/api/files/${item.id}/download`;
+  const url = authDownloadUrl(`/api/files/${item.id}/download`);
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
 function downloadUrlForFile(item) {
-  return `${location.origin}/api/files/${item.id}/download`;
+  return authDownloadUrl(`/api/files/${item.id}/download`);
 }
 
 function downloadUrlForItem(item) {
-  if (item.itemType === "folder") return `${location.origin}/api/items/${item.id}/download`;
+  if (item.itemType === "folder") return authDownloadUrl(`/api/items/${item.id}/download`);
   return downloadUrlForFile(item);
 }
 

@@ -57,6 +57,15 @@
     if (data && data.sessionToken) saveSessionToken(data.sessionToken);
   }
 
+  function authGetUrl(pathOrUrl) {
+    const url = /^https?:\/\//i.test(String(pathOrUrl || ""))
+      ? new URL(pathOrUrl)
+      : new URL(String(pathOrUrl || "/"), window.location.origin);
+    const token = getSessionToken();
+    if (token) url.searchParams.set("st", token);
+    return url.toString();
+  }
+
   window.EyeAuth = {
     saveSessionToken,
     getSessionToken,
@@ -66,6 +75,7 @@
     fetchOpts,
     fetchJsonOpts,
     authJsonBody,
+    authGetUrl,
     auth: {
       JsonBody: authJsonBody,
       jsonBody: authJsonBody,

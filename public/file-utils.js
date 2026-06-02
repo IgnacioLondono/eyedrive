@@ -69,7 +69,10 @@
     if (isImageItem(item) && previewUrl) {
       icon.classList.add("file-icon--preview", "file-icon--file");
       const img = document.createElement("img");
-      img.src = previewUrl;
+      img.src =
+        window.EyeAuth?.authGetUrl && previewUrl.startsWith("/")
+          ? window.EyeAuth.authGetUrl(previewUrl)
+          : previewUrl;
       img.alt = "";
       img.loading = "lazy";
       img.decoding = "async";
