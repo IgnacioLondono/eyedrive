@@ -123,11 +123,12 @@
         20,
         20
       ),
-    setFileIcon: function (el, type, fileName) {
+    setFileIcon: function (el, type, fileName, options) {
       if (!el) return;
+      const plain = options && options.plain;
       el.classList.remove("file-icon--folder", "file-icon--file");
       if (type === "folder") {
-        el.classList.add("file-icon--folder");
+        if (!plain) el.classList.add("file-icon--folder");
         el.innerHTML = window.EyeIcons.folder();
       } else {
         const ext = String(fileName || "")
@@ -149,7 +150,7 @@
         else if (videoExt.has(ext)) iconFn = window.EyeIcons.fileVideo;
         else if (codeExt.has(ext)) iconFn = window.EyeIcons.fileCode;
         else if (ext) iconFn = window.EyeIcons.fileText;
-        el.classList.add("file-icon--file");
+        if (!plain) el.classList.add("file-icon--file");
         el.innerHTML = iconFn();
       }
     },

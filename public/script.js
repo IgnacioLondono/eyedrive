@@ -608,7 +608,7 @@ function renderSidebarFolderTree(items) {
         const fileIc = document.createElement("span");
         fileIc.className = "tree-file-ic";
         fileIc.setAttribute("aria-hidden", "true");
-        if (window.EyeIcons) window.EyeIcons.setFileIcon(fileIc, "file", node.name);
+        if (window.EyeIcons) window.EyeIcons.setFileIcon(fileIc, "file", node.name, { plain: true });
         row.appendChild(fileIc);
       }
 
