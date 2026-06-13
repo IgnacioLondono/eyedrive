@@ -16,6 +16,7 @@ type DriveShellProps = {
   search?: string;
   onSearchChange?: (value: string) => void;
   onRefresh?: () => void;
+  onAreaContextMenu?: (e: React.MouseEvent, area: "breadcrumb" | "sidebar") => void;
   sidebar?: ReactNode;
   toolbar?: ReactNode;
   children: ReactNode;
@@ -29,6 +30,7 @@ export function DriveShell({
   search = "",
   onSearchChange,
   onRefresh,
+  onAreaContextMenu,
   sidebar,
   toolbar,
   children,
@@ -48,13 +50,24 @@ export function DriveShell({
             <p className="text-[11px] text-zinc-500">Tu nube personal</p>
           </div>
         </div>
-        <nav className="flex-1 overflow-y-auto px-3 py-4">{sidebar}</nav>
+        <nav
+          className="flex-1 overflow-y-auto px-3 py-4"
+          onContextMenu={(e) => {
+            if ((e.target as HTMLElement).closest("input, textarea")) return;
+            onAreaContextMenu?.(e, "sidebar");
+          }}
+        >
+          {sidebar}
+        </nav>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--panel)]/95 backdrop-blur-md">
           <div className="flex flex-wrap items-center gap-3 px-6 py-3">
-            <nav className="flex min-w-0 flex-wrap items-center gap-1 text-sm">
+            <nav
+              className="flex min-w-0 flex-wrap items-center gap-1 text-sm"
+              onContextMenu={(e) => onAreaContextMenu?.(e, "breadcrumb")}
+            >
               <button
                 type="button"
                 className={cn(
