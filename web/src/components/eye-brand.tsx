@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { EYED_BRAND, EYED_CLOUD_PATH, EYED_EYE_PATH } from "@/lib/brand";
+import { EYED_BRAND, EYED_MARK } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -10,9 +10,7 @@ type Props = {
   size?: number;
 };
 
-const EYE_VIEW = 24;
-
-/** Logo animado: squircle morado + ojo centrado; pupila sigue al cursor */
+/** Logo animado: squircle morado + marca nube-ojo; pupila sigue al cursor */
 export function EyeBrand({ closeOnPassword = false, className, size = 40 }: Props) {
   const ref = useRef<HTMLSpanElement>(null);
   const gradId = useId().replace(/:/g, "");
@@ -22,10 +20,7 @@ export function EyeBrand({ closeOnPassword = false, className, size = 40 }: Prop
   const raf = useRef(0);
 
   const r = Math.round(size * EYED_BRAND.radiusRatio);
-  const cloudScale = (size * 0.72) / EYE_VIEW;
-  const cloudOffset = (size - EYE_VIEW * cloudScale) / 2;
-  const eyeScale = (size * 0.5) / EYE_VIEW;
-  const eyeOffset = (size - EYE_VIEW * eyeScale) / 2;
+  const markScale = (size / EYED_MARK.view) * EYED_MARK.scaleRatio;
   const squint = closed || blink;
 
   useEffect(() => {
@@ -106,21 +101,26 @@ export function EyeBrand({ closeOnPassword = false, className, size = 40 }: Prop
           </linearGradient>
         </defs>
         <rect width={size} height={size} rx={r} fill={`url(#${gradId})`} />
-        <g transform={`translate(${cloudOffset}, ${cloudOffset + size * 0.06}) scale(${cloudScale})`}>
-          <path d={EYED_CLOUD_PATH} fill={EYED_BRAND.eye} fillOpacity={0.9} stroke="none" />
-        </g>
-        <g transform={`translate(${eyeOffset}, ${eyeOffset - size * 0.03}) scale(${eyeScale})`}>
-          <g transform={`translate(12, 12) scale(1, ${squint ? 0.12 : 1}) translate(-12, -12)`}>
+        <g transform={`translate(${size / 2}, ${size * EYED_MARK.centerYRatio})`}>
+          <g
+            transform={`scale(${markScale}) translate(-${EYED_MARK.pivotX} -${EYED_MARK.pivotY}) scale(1, ${squint ? 0.12 : 1}) translate(${EYED_MARK.pivotX} ${EYED_MARK.pivotY})`}
+          >
             <path
-              d={EYED_EYE_PATH}
-              fill="none"
+              d={EYED_MARK.outline}
+              fill={EYED_BRAND.eye}
+              fillOpacity={0.16}
               stroke={EYED_BRAND.eye}
-              strokeWidth="1.85"
-              strokeLinecap="round"
+              strokeWidth={1.25}
               strokeLinejoin="round"
             />
             <g data-pupil opacity={squint ? 0 : 1}>
-              <circle cx="12" cy="12" r="2.75" fill={EYED_BRAND.eye} stroke="none" />
+              <circle
+                cx={EYED_MARK.pupilX}
+                cy={EYED_MARK.pupilY}
+                r={EYED_MARK.pupilR}
+                fill={EYED_BRAND.eye}
+                stroke="none"
+              />
             </g>
           </g>
         </g>
