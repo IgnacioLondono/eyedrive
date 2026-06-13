@@ -1,25 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import {
-  ChevronRight,
-  CloudUpload,
-  Download,
-  FolderPlus,
-  HardDrive,
-  Moon,
-  RefreshCw,
-  Search,
-  Share2,
-  Sun,
-  Trash2,
-  User,
-} from "lucide-react";
-import Link from "next/link";
+import { CloudUpload, Download, FolderPlus, LayoutGrid, Share2, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { EyeBrand } from "@/components/eye-brand";
-import { useTheme } from "@/components/providers/theme-provider";
+import { DriveShell } from "@/components/drive/drive-shell";
+import { SidebarTree } from "@/components/drive/sidebar-tree";
 import {
   authApi,
   createFolder,
@@ -34,7 +20,8 @@ import {
 } from "@/lib/api";
 import { clearSessionToken } from "@/lib/auth";
 import { getFileIcon, getFileKindLabel, isImageItem } from "@/lib/files";
-import type { DriveItem, PathSegment, TreeNode, User as AppUser } from "@/lib/types";
+import { ensureExpandedForPath, type FlatTreeItem } from "@/lib/tree";
+import type { DriveItem, PathSegment, User as AppUser } from "@/lib/types";
 import { cn, formatDate, formatSize } from "@/lib/utils";
 
 const NAV_KEY = "eyedrive.nav.pathSegments.v1";
@@ -54,28 +41,28 @@ function savePath(segments: PathSegment[]) {
 
 export function DriveApp({ user }: { user: AppUser }) {
   const router = useRouter();
-  const { theme, toggleTheme } = useTheme();
   const [path, setPath] = useState<PathSegment[]>([]);
   const [items, setItems] = useState<DriveItem[]>([]);
-  const [tree, setTree] = useState<TreeNode[]>([]);
+  const [treeFlat, setTreeFlat] = useState<FlatTreeItem[]>([]);
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(["ROOT"]));
+  const [rootExpanded, setRootExpanded] = useState(true);
+  const [newFolderOpen, setNewFolderOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const folderRef = useRef<HTMLInputElement>(null);
 
   const parentId = path.length ? path[path.length - 1].id : null;
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [list, t] = await Promise.all([listItems(parentId), fetchItemTree()]);
+      const [list, tree] = await Promise.all([listItems(parentId), fetchItemTree()]);
       setItems(list);
-      setTree(t);
-      setSelected(new Set());
+      setTreeFlat(tree);
     } catch (e) {
       if (e instanceof Error && e.message === "No autenticado") router.replace("/login");
     } finally {
@@ -89,6 +76,7 @@ export function DriveApp({ user }: { user: AppUser }) {
 
   useEffect(() => {
     savePath(path);
+    setExpanded((prev) => ensureExpandedForPath(prev, path));
     refresh();
   }, [path, refresh]);
 
@@ -128,11 +116,13 @@ export function DriveApp({ user }: { user: AppUser }) {
     }
   }
 
-  async function onNewFolder() {
-    const name = prompt("Nombre de la carpeta");
-    if (!name?.trim()) return;
+  async function submitNewFolder() {
+    const name = newFolderName.trim();
+    if (!name) return;
     try {
-      await createFolder(name.trim(), parentId);
+      await createFolder(name, parentId);
+      setNewFolderName("");
+      setNewFolderOpen(false);
       await refresh();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Error");
@@ -175,133 +165,134 @@ export function DriveApp({ user }: { user: AppUser }) {
     router.replace("/login");
   }
 
+  const currentFolder = path.length ? path[path.length - 1] : null;
+
   return (
-    <div className="flex min-h-screen bg-[var(--bg)]">
-      <aside className="flex w-64 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--sidebar)] text-[var(--sidebar-text)]">
-        <div className="flex items-center gap-2 border-b border-white/10 p-4">
-          <EyeBrand size={36} />
-          <span className="text-lg font-bold">Eyedrive</span>
-        </div>
-        <nav className="flex-1 overflow-y-auto p-3">
-          <button
-            type="button"
-            onClick={() => navigate([])}
-            className={cn(
-              "mb-2 flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-sm transition",
-              path.length === 0 ? "border-white font-bold" : "border-white/20 text-[var(--sidebar-muted)] hover:border-white/50"
-            )}
-          >
-            <HardDrive className="h-4 w-4" /> Mi unidad
-          </button>
-          <TreeView nodes={tree} path={path} expanded={expanded} setExpanded={setExpanded} onNavigate={navigate} onOpenFile={openItem} />
-        </nav>
-      </aside>
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex flex-wrap items-center gap-3 border-b border-[var(--border)] bg-[var(--panel)] px-5 py-3">
-          <nav className="flex flex-wrap items-center gap-1 text-sm">
-            <button type="button" className="rounded-lg border border-[var(--border)] px-2 py-1 hover:border-[var(--text)]" onClick={() => navigate([])}>
-              Mi unidad
-            </button>
-            {path.map((seg, i) => (
-              <span key={seg.id} className="flex items-center gap-1">
-                <ChevronRight className="h-4 w-4 text-[var(--muted)]" />
-                <button
-                  type="button"
-                  className={cn(
-                    "rounded-lg border px-2 py-1",
-                    i === path.length - 1 ? "border-2 border-[var(--text)] font-bold" : "border-[var(--border)] hover:border-[var(--text)]"
-                  )}
-                  onClick={() => navigate(path.slice(0, i + 1))}
-                >
-                  {seg.name}
-                </button>
-              </span>
-            ))}
-          </nav>
-          <div className="ml-auto flex items-center gap-2">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar en esta carpeta…"
-                className="rounded-xl border border-[var(--border)] bg-[var(--panel-deep)] py-2 pl-9 pr-3 text-sm outline-none focus:border-[var(--text)]"
-              />
-            </div>
-            <button type="button" onClick={() => refresh()} className="rounded-xl border border-[var(--border)] p-2 hover:border-[var(--text)]" aria-label="Actualizar">
-              <RefreshCw className="h-4 w-4" />
-            </button>
-            <button type="button" onClick={toggleTheme} className="rounded-xl border border-[var(--border)] p-2 hover:border-[var(--text)]" aria-label="Tema">
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button>
-            <div className="relative">
-              <button type="button" onClick={() => setMenuOpen((v) => !v)} className="flex items-center gap-2 rounded-xl border border-[var(--border)] px-3 py-1.5 text-sm hover:border-[var(--text)]">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--text)] text-xs font-bold text-[var(--bg)]">
-                  {(user.displayName || user.email).slice(0, 2).toUpperCase()}
-                </span>
-              </button>
-              {menuOpen && (
-                <div className="absolute right-0 z-20 mt-1 w-48 rounded-xl border border-[var(--border)] bg-[var(--panel)] py-1 shadow-xl">
-                  <p className="truncate px-3 py-2 text-xs text-[var(--muted)]">{user.email}</p>
-                  <Link href="/cuenta" className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-[var(--panel-deep)]"><User className="h-4 w-4" /> Mi cuenta</Link>
-                  <button type="button" onClick={logout} className="w-full px-3 py-2 text-left text-sm hover:bg-[var(--panel-deep)]">Cerrar sesión</button>
-                </div>
-              )}
-            </div>
-          </div>
-        </header>
-
-        <div className="flex flex-wrap gap-2 border-b border-[var(--border)] bg-[var(--panel)] px-5 py-2">
-          <button type="button" onClick={() => fileRef.current?.click()} className="inline-flex items-center gap-2 rounded-xl bg-[var(--text)] px-3 py-2 text-sm font-medium text-[var(--bg)]">
-            <CloudUpload className="h-4 w-4" /> Subir
-          </button>
-          <button type="button" onClick={onNewFolder} className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] px-3 py-2 text-sm hover:border-[var(--text)]">
-            <FolderPlus className="h-4 w-4" /> Nueva carpeta
-          </button>
-          {path.length > 0 && (
+    <>
+      <DriveShell
+        user={user}
+        path={path}
+        onNavigate={navigate}
+        search={search}
+        onSearchChange={setSearch}
+        onRefresh={refresh}
+        onLogout={logout}
+        sidebar={
+          <SidebarTree
+            flat={treeFlat}
+            path={path}
+            expanded={expanded}
+            rootExpanded={rootExpanded}
+            onToggleRoot={() => {
+              setRootExpanded((v) => !v);
+              if (!rootExpanded) setExpanded((s) => new Set(s).add("ROOT"));
+            }}
+            onToggleFolder={(id) =>
+              setExpanded((s) => {
+                const n = new Set(s);
+                if (n.has(id)) n.delete(id);
+                else n.add(id);
+                return n;
+              })
+            }
+            onNavigateFolder={navigate}
+            onOpenFile={openItem}
+          />
+        }
+        toolbar={
+          <>
             <button
               type="button"
-              onClick={() => onShareFolder({ id: path[path.length - 1].id, name: path[path.length - 1].name, itemType: "folder", size: 0, addedAt: "" })}
-              className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] px-3 py-2 text-sm hover:border-[var(--text)]"
+              onClick={() => fileRef.current?.click()}
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:brightness-110"
             >
-              <Share2 className="h-4 w-4" /> Compartir carpeta
+              <CloudUpload className="h-4 w-4" /> Subir
             </button>
-          )}
-          <span className="ml-auto self-center text-sm text-[var(--muted)]">{visible.length} elemento{visible.length === 1 ? "" : "s"}</span>
-        </div>
-
+            <button
+              type="button"
+              onClick={() => setNewFolderOpen(true)}
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--panel)] px-4 py-2 text-sm font-medium transition hover:border-[var(--text)]"
+            >
+              <FolderPlus className="h-4 w-4" /> Nueva carpeta
+            </button>
+            <button
+              type="button"
+              onClick={() => folderRef.current?.click()}
+              className="hidden items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 text-sm transition hover:border-[var(--text)] sm:inline-flex"
+            >
+              Subir carpeta
+            </button>
+            {currentFolder && (
+              <button
+                type="button"
+                onClick={() =>
+                  onShareFolder({
+                    id: currentFolder.id,
+                    name: currentFolder.name,
+                    itemType: "folder",
+                    size: 0,
+                    addedAt: "",
+                  })
+                }
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 text-sm transition hover:border-[var(--text)]"
+              >
+                <Share2 className="h-4 w-4" /> Compartir
+              </button>
+            )}
+            <span className="ml-auto flex items-center gap-1.5 text-sm text-[var(--muted)]">
+              <LayoutGrid className="h-4 w-4" />
+              {visible.length} elemento{visible.length === 1 ? "" : "s"}
+            </span>
+          </>
+        }
+      >
         {uploadPct !== null && (
-          <div className="mx-5 mt-3 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
-            <div className="mb-1 text-sm">Subiendo… {uploadPct}%</div>
+          <div className="mx-6 mt-4 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
+            <div className="mb-2 flex items-center justify-between text-sm">
+              <span>Subiendo archivos…</span>
+              <span className="font-medium">{uploadPct}%</span>
+            </div>
             <div className="h-2 overflow-hidden rounded-full bg-[var(--panel-deep)]">
-              <motion.div className="h-full bg-[var(--text)]" animate={{ width: `${uploadPct}%` }} />
+              <motion.div
+                className="h-full rounded-full bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)]"
+                animate={{ width: `${uploadPct}%` }}
+              />
             </div>
           </div>
         )}
 
         <main
-          className="flex-1 p-5"
+          className="flex-1 px-6 py-5"
           onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => { e.preventDefault(); onUpload(e.dataTransfer.files); }}
+          onDrop={(e) => {
+            e.preventDefault();
+            onUpload(e.dataTransfer.files);
+          }}
         >
           {loading ? (
-            <p className="text-[var(--muted)]">Cargando…</p>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-28 animate-pulse rounded-2xl bg-[var(--panel)]" />
+              ))}
+            </div>
           ) : visible.length === 0 ? (
-            <div
-              className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] py-20 text-[var(--muted)]"
+            <button
+              type="button"
+              className="flex w-full flex-col items-center justify-center rounded-3xl border-2 border-dashed border-[var(--border)] bg-[var(--panel)] py-24 text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--text)]"
               onClick={() => fileRef.current?.click()}
             >
-              <CloudUpload className="mb-3 h-10 w-10 opacity-40" />
-              <p>Arrastra archivos aquí o pulsa para subir</p>
-            </div>
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--panel-deep)]">
+                <CloudUpload className="h-8 w-8 opacity-50" />
+              </div>
+              <p className="text-lg font-medium text-[var(--text)]">Esta carpeta está vacía</p>
+              <p className="mt-1 text-sm">Arrastra archivos aquí o pulsa para subir</p>
+            </button>
           ) : (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
               {visible.map((item) => (
                 <FileCard
                   key={item.id}
                   item={item}
-                  selected={selected.has(item.id)}
                   onOpen={() => openItem(item)}
                   onDelete={() => onDelete(item)}
                   onDownload={() => window.location.assign(downloadItemUrl(item))}
@@ -312,31 +303,82 @@ export function DriveApp({ user }: { user: AppUser }) {
             </div>
           )}
         </main>
-      </div>
+      </DriveShell>
 
       <input ref={fileRef} type="file" multiple className="hidden" onChange={(e) => onUpload(e.target.files)} />
+      <input
+        ref={folderRef}
+        type="file"
+        // @ts-expect-error webkitdirectory no está en los tipos de React
+        webkitdirectory=""
+        multiple
+        className="hidden"
+        onChange={(e) => onUpload(e.target.files)}
+      />
 
-      {shareUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShareUrl(null)}>
-          <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="mb-2 text-lg font-semibold">Enlace de compartición</h2>
-            <input readOnly value={shareUrl} className="mb-3 w-full rounded-xl border border-[var(--border)] bg-[var(--panel-deep)] px-3 py-2 text-sm" />
-            <div className="flex gap-2">
-              <button type="button" className="flex-1 rounded-xl bg-[var(--text)] py-2 text-sm font-medium text-[var(--bg)]" onClick={() => navigator.clipboard.writeText(shareUrl)}>
-                Copiar enlace
+      {newFolderOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm" onClick={() => setNewFolderOpen(false)}>
+          <div
+            className="w-full max-w-md rounded-3xl border border-[var(--border)] bg-[var(--panel)] p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Nueva carpeta</h2>
+              <button type="button" className="rounded-full p-1 text-[var(--muted)] hover:text-[var(--text)]" onClick={() => setNewFolderOpen(false)}>
+                <X className="h-5 w-5" />
               </button>
-              <button type="button" className="rounded-xl border border-[var(--border)] px-4 py-2 text-sm" onClick={() => setShareUrl(null)}>Cerrar</button>
+            </div>
+            <input
+              autoFocus
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submitNewFolder()}
+              placeholder="Nombre de la carpeta"
+              className="mb-4 w-full rounded-xl border border-[var(--border)] bg-[var(--panel-deep)] px-4 py-3 text-sm outline-none focus:border-[var(--accent)]"
+            />
+            <div className="flex justify-end gap-2">
+              <button type="button" className="rounded-xl border border-[var(--border)] px-4 py-2 text-sm" onClick={() => setNewFolderOpen(false)}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="rounded-xl bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] px-4 py-2 text-sm font-semibold text-white"
+                onClick={submitNewFolder}
+              >
+                Crear
+              </button>
             </div>
           </div>
         </div>
       )}
-    </div>
+
+      {shareUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm" onClick={() => setShareUrl(null)}>
+          <div className="w-full max-w-md rounded-3xl border border-[var(--border)] bg-[var(--panel)] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-2 text-lg font-semibold">Enlace de compartición</h2>
+            <p className="mb-3 text-sm text-[var(--muted)]">Cualquiera con este enlace podrá ver el contenido.</p>
+            <input readOnly value={shareUrl} className="mb-4 w-full rounded-xl border border-[var(--border)] bg-[var(--panel-deep)] px-4 py-3 text-sm" />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="flex-1 rounded-xl bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] py-2.5 text-sm font-semibold text-white"
+                onClick={() => navigator.clipboard.writeText(shareUrl)}
+              >
+                Copiar enlace
+              </button>
+              <button type="button" className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm" onClick={() => setShareUrl(null)}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
 function FileCard({
   item,
-  selected,
   onOpen,
   onDelete,
   onDownload,
@@ -344,7 +386,6 @@ function FileCard({
   onShare,
 }: {
   item: DriveItem;
-  selected: boolean;
   onOpen: () => void;
   onDelete: () => void;
   onDownload: () => void;
@@ -353,118 +394,84 @@ function FileCard({
 }) {
   const Icon = getFileIcon(item.name, item.itemType);
   const isImg = isImageItem(item.name, item.mimeType, item.itemType);
+  const isFolder = item.itemType === "folder";
 
   return (
     <motion.article
       layout
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={cn(
-        "group flex cursor-pointer gap-3 rounded-2xl border bg-[var(--panel)] p-3 transition hover:shadow-lg hover:shadow-black/5",
-        selected ? "border-2 border-[var(--text)]" : "border-[var(--border)]"
-      )}
+      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-sm transition hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--accent)_35%,var(--border))] hover:shadow-lg"
       onClick={onOpen}
     >
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel-deep)]">
+      <div
+        className={cn(
+          "flex h-32 items-center justify-center border-b border-[var(--border)] bg-[var(--panel-deep)]",
+          isFolder && "bg-gradient-to-br from-[color-mix(in_srgb,var(--accent)_8%,var(--panel-deep))] to-[var(--panel-deep)]"
+        )}
+      >
         {isImg ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={previewItemUrl(item.id)} alt="" className="h-full w-full object-cover" loading="lazy" />
         ) : (
-          <Icon className="h-5 w-5 text-[var(--muted)]" strokeWidth={1.5} />
+          <Icon className={cn("h-10 w-10", isFolder ? "text-[var(--accent)]" : "text-[var(--muted)]")} strokeWidth={1.25} />
         )}
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-[var(--text)]">{item.name}</p>
-        <p className="text-xs text-[var(--muted)]">
-          {getFileKindLabel(item.name, item.mimeType, item.itemType)} · {item.itemType === "folder" ? formatDate(item.addedAt) : formatSize(item.size)}
+      <div className="flex flex-1 flex-col p-4">
+        <p className="truncate font-semibold text-[var(--text)]">{item.name}</p>
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          {getFileKindLabel(item.name, item.mimeType, item.itemType)} · {isFolder ? formatDate(item.addedAt) : formatSize(item.size)}
         </p>
       </div>
-      <div className="flex shrink-0 flex-col gap-1 opacity-0 transition group-hover:opacity-100" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="absolute right-2 top-2 flex gap-1 opacity-0 transition group-hover:opacity-100"
+        onClick={(e) => e.stopPropagation()}
+      >
         {item.itemType === "file" && (
-          <button type="button" className="rounded-lg border border-[var(--border)] p-1 hover:border-[var(--text)]" onClick={onDownload} aria-label="Descargar">
+          <ActionBtn onClick={onDownload} label="Descargar">
             <Download className="h-3.5 w-3.5" />
-          </button>
+          </ActionBtn>
         )}
         {onShare && (
-          <button type="button" className="rounded-lg border border-[var(--border)] p-1 hover:border-[var(--text)]" onClick={onShare} aria-label="Compartir">
+          <ActionBtn onClick={onShare} label="Compartir">
             <Share2 className="h-3.5 w-3.5" />
-          </button>
+          </ActionBtn>
         )}
         {onRename && (
-          <button type="button" className="rounded-lg border border-[var(--border)] p-1 text-xs hover:border-[var(--text)]" onClick={onRename}>✎</button>
+          <ActionBtn onClick={onRename} label="Renombrar">
+            <span className="text-xs">✎</span>
+          </ActionBtn>
         )}
-        <button type="button" className="rounded-lg border border-red-500/30 p-1 text-red-500 hover:border-red-500" onClick={onDelete} aria-label="Eliminar">
+        <ActionBtn onClick={onDelete} label="Eliminar" danger>
           <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        </ActionBtn>
       </div>
     </motion.article>
   );
 }
 
-function TreeView({
-  nodes,
-  path,
-  expanded,
-  setExpanded,
-  onNavigate,
-  onOpenFile,
-  depth = 0,
+function ActionBtn({
+  children,
+  onClick,
+  label,
+  danger,
 }: {
-  nodes: TreeNode[];
-  path: PathSegment[];
-  expanded: Set<string>;
-  setExpanded: React.Dispatch<React.SetStateAction<Set<string>>>;
-  onNavigate: (segments: PathSegment[]) => void;
-  onOpenFile: (item: DriveItem) => void;
-  depth?: number;
+  children: React.ReactNode;
+  onClick: () => void;
+  label: string;
+  danger?: boolean;
 }) {
   return (
-    <ul className="space-y-0.5" style={{ paddingLeft: depth ? 12 : 0 }}>
-      {nodes.map((node) => {
-        const isFolder = node.itemType === "folder";
-        const hasKids = isFolder && (node.children?.length ?? 0) > 0;
-        const isOpen = expanded.has(node.id);
-        const Icon = getFileIcon(node.name, node.itemType);
-        return (
-          <li key={node.id}>
-            <div className="flex items-center gap-0.5">
-              {isFolder && (
-                <button
-                  type="button"
-                  className="w-4 text-xs text-[var(--sidebar-muted)]"
-                  onClick={() => setExpanded((s) => {
-                    const n = new Set(s);
-                    if (n.has(node.id)) n.delete(node.id);
-                    else n.add(node.id);
-                    return n;
-                  })}
-                >
-                  {hasKids ? (isOpen ? "▾" : "▸") : "•"}
-                </button>
-              )}
-              {!isFolder && <span className="w-4" />}
-              <button
-                type="button"
-                className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md border border-transparent px-1.5 py-1 text-left text-xs text-[var(--sidebar-muted)] hover:border-white/40 hover:text-[var(--sidebar-text)]"
-                onClick={() => {
-                  if (isFolder) {
-                    // build path from tree is complex; navigate by name/id from root is handled in main grid
-                    onNavigate([{ id: node.id, name: node.name }]);
-                  } else {
-                    onOpenFile({ id: node.id, name: node.name, itemType: "file", size: 0, addedAt: "" });
-                  }
-                }}
-              >
-                <Icon className="h-3 w-3 shrink-0 opacity-70" strokeWidth={1.5} />
-                <span className="truncate">{node.name}</span>
-              </button>
-            </div>
-            {isFolder && hasKids && isOpen && (
-              <TreeView nodes={node.children!} path={path} expanded={expanded} setExpanded={setExpanded} onNavigate={onNavigate} onOpenFile={onOpenFile} depth={depth + 1} />
-            )}
-          </li>
-        );
-      })}
-    </ul>
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className={cn(
+        "rounded-lg border bg-[var(--panel)] p-1.5 shadow-sm backdrop-blur transition",
+        danger ? "border-red-500/30 text-red-500 hover:border-red-500" : "border-[var(--border)] hover:border-[var(--text)]"
+      )}
+    >
+      {children}
+    </button>
   );
 }

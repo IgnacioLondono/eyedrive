@@ -1,4 +1,5 @@
 import { authFetch, authGetUrl, authJsonBody, authJsonFetch, getDeviceId } from "./auth";
+import { normalizeFlatTree, type FlatTreeItem } from "./tree";
 import type { DriveItem, TreeNode, TrustedDevice, User } from "./types";
 
 async function parseError(res: Response, fallback: string): Promise<never> {
@@ -21,10 +22,11 @@ export async function listItems(parentId: string | null): Promise<DriveItem[]> {
   return res.json();
 }
 
-export async function fetchItemTree(): Promise<TreeNode[]> {
+export async function fetchItemTree(): Promise<FlatTreeItem[]> {
   const res = await authFetch("/api/items/tree");
   if (!res.ok) await parseError(res, "Error al cargar árbol");
-  return res.json();
+  const data = await res.json();
+  return normalizeFlatTree(Array.isArray(data) ? data : []);
 }
 
 export async function fetchFolderTree(): Promise<TreeNode[]> {
