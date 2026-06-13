@@ -33,5 +33,6 @@ export interface TrustedDevice {
   id: string;
   label: string;
   createdAt: string;
-  expiresAt: string;
+  lastUsedAt: string;
+  isCurrent?: boolean;
 }

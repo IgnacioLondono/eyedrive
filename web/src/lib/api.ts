@@ -215,9 +215,18 @@ export const authApi = {
       body: JSON.stringify({ loginCodeEnabled }),
     }),
   listDevices: async (): Promise<TrustedDevice[]> => {
-    const res = await authFetch("/api/auth/account/devices");
+    const q = `?deviceId=${encodeURIComponent(getDeviceId())}`;
+    const res = await authFetch(`/api/auth/account/devices${q}`);
     if (!res.ok) await parseError(res, "Error");
-    return res.json();
+    const data = (await res.json()) as { devices?: Array<Record<string, unknown>> };
+    const rows = Array.isArray(data?.devices) ? data.devices : [];
+    return rows.map((d) => ({
+      id: String(d.id),
+      label: String(d.label || "Navegador web"),
+      createdAt: String(d.createdAt || d.created_at || ""),
+      lastUsedAt: String(d.lastUsedAt || d.last_used_at || ""),
+      isCurrent: Boolean(d.isCurrent ?? d.is_current),
+    }));
   },
   revokeAllDevices: () => authFetch("/api/auth/account/devices", { method: "DELETE" }),
 };

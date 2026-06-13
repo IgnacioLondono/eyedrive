@@ -8,9 +8,14 @@ type Props = {
   id?: string;
 };
 
-/** Logo estático: squircle morado + ojo blanco (estilo pestaña Eyed) */
+const EYE_VIEW = 24;
+
+/** Logo estático: squircle morado + ojo blanco centrado */
 export function EyedLogoMark({ size = 32, className, id = "eyed-grad" }: Props) {
   const r = Math.round(size * EYED_BRAND.radiusRatio);
+  const eyeScale = (size * 0.55) / EYE_VIEW;
+  const offset = (size - EYE_VIEW * eyeScale) / 2;
+
   return (
     <svg
       width={size}
@@ -27,15 +32,15 @@ export function EyedLogoMark({ size = 32, className, id = "eyed-grad" }: Props) 
         </linearGradient>
       </defs>
       <rect width={size} height={size} rx={r} fill={`url(#${id})`} />
-      <g
-        transform={`translate(${(size - 24) / 2}, ${(size - 24) / 2}) scale(${24 / 24})`}
-        fill="none"
-        stroke={EYED_BRAND.eye}
-        strokeWidth="1.85"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d={EYED_EYE_PATH} />
+      <g transform={`translate(${offset}, ${offset}) scale(${eyeScale})`}>
+        <path
+          d={EYED_EYE_PATH}
+          fill="none"
+          stroke={EYED_BRAND.eye}
+          strokeWidth="1.85"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
         <circle cx="12" cy="12" r="2.75" fill={EYED_BRAND.eye} stroke="none" />
       </g>
     </svg>

@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useEffect, useId, useRef, useState } from "react";
 import { EYED_BRAND, EYED_EYE_PATH } from "@/lib/brand";
 import { cn } from "@/lib/utils";
@@ -11,7 +10,9 @@ type Props = {
   size?: number;
 };
 
-/** Logo animado: mismo estilo Eyed + pupila que sigue al cursor */
+const EYE_VIEW = 24;
+
+/** Logo animado: squircle morado + ojo centrado; pupila sigue al cursor */
 export function EyeBrand({ closeOnPassword = false, className, size = 40 }: Props) {
   const ref = useRef<HTMLSpanElement>(null);
   const gradId = useId().replace(/:/g, "");
@@ -19,8 +20,11 @@ export function EyeBrand({ closeOnPassword = false, className, size = 40 }: Prop
   const [blink, setBlink] = useState(false);
   const pupil = useRef({ x: 0, y: 0, tx: 0, ty: 0 });
   const raf = useRef(0);
+
   const r = Math.round(size * EYED_BRAND.radiusRatio);
-  const eyeScale = (size * 0.55) / 24;
+  const eyeScale = (size * 0.55) / EYE_VIEW;
+  const offset = (size - EYE_VIEW * eyeScale) / 2;
+  const squint = closed || blink;
 
   useEffect(() => {
     const onMove = (e: MouseEvent | TouchEvent) => {
@@ -30,8 +34,8 @@ export function EyeBrand({ closeOnPassword = false, className, size = 40 }: Prop
       const rect = el.getBoundingClientRect();
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height / 2;
-      const clientX = "touches" in e ? e.touches[0]?.clientX ?? cx : e.clientX;
-      const clientY = "touches" in e ? e.touches[0]?.clientY ?? cy : e.clientY;
+      const clientX = "touches" in e ? (e.touches[0]?.clientX ?? cx) : e.clientX;
+      const clientY = "touches" in e ? (e.touches[0]?.clientY ?? cy) : e.clientY;
       const dx = clientX - cx;
       const dy = clientY - cy;
       const dist = Math.hypot(dx, dy);
@@ -89,11 +93,9 @@ export function EyeBrand({ closeOnPassword = false, className, size = 40 }: Prop
     };
   }, [closeOnPassword]);
 
-  const squint = closed || blink;
-
   return (
     <span ref={ref} className={cn("inline-flex shrink-0", className)} style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true" className="overflow-visible">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
         <defs>
           <linearGradient id={gradId} x1="0.5" y1="0" x2="0.5" y2="1">
             <stop offset="0%" stopColor={EYED_BRAND.gradientFrom} />
@@ -102,13 +104,8 @@ export function EyeBrand({ closeOnPassword = false, className, size = 40 }: Prop
           </linearGradient>
         </defs>
         <rect width={size} height={size} rx={r} fill={`url(#${gradId})`} />
-        <motion.g
-          transform={`translate(${size / 2}, ${size / 2})`}
-          animate={{ scaleY: squint ? 0.12 : 1 }}
-          transition={{ duration: squint ? 0.09 : 0.26 }}
-          style={{ originY: 0.5 }}
-        >
-          <g transform={`translate(${-12 * eyeScale}, ${-12 * eyeScale}) scale(${eyeScale})`}>
+        <g transform={`translate(${offset}, ${offset}) scale(${eyeScale})`}>
+          <g transform={`translate(12, 12) scale(1, ${squint ? 0.12 : 1}) translate(-12, -12)`}>
             <path
               d={EYED_EYE_PATH}
               fill="none"
@@ -117,11 +114,11 @@ export function EyeBrand({ closeOnPassword = false, className, size = 40 }: Prop
               strokeLinecap="round"
               strokeLinejoin="round"
             />
-            <motion.g data-pupil animate={{ opacity: squint ? 0 : 1 }}>
+            <g data-pupil opacity={squint ? 0 : 1}>
               <circle cx="12" cy="12" r="2.75" fill={EYED_BRAND.eye} stroke="none" />
-            </motion.g>
+            </g>
           </g>
-        </motion.g>
+        </g>
       </svg>
     </span>
   );

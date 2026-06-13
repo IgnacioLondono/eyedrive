@@ -7,10 +7,13 @@ export function formatSize(bytes: number): string {
 }
 
 export function formatDate(dateString: string): string {
+  if (!dateString) return "—";
+  const d = new Date(dateString);
+  if (Number.isNaN(d.getTime())) return "—";
   return new Intl.DateTimeFormat("es", {
     dateStyle: "short",
     timeStyle: "short",
-  }).format(new Date(dateString));
+  }).format(d);
 }
 
 export function cn(...parts: (string | false | null | undefined)[]): string {

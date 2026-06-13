@@ -18,9 +18,14 @@ export default function CuentaPage() {
 
   useEffect(() => {
     fetchMe()
-      .then((u) => setUser(u))
-      .catch(() => setUser(null));
-    authApi.listDevices().then(setDevices).catch(() => {});
+      .then((u) => {
+        if (!u) window.location.href = "/login";
+        else setUser(u);
+      })
+      .catch(() => {
+        window.location.href = "/login";
+      });
+    authApi.listDevices().then(setDevices).catch(() => setDevices([]));
   }, []);
 
   async function logout() {
@@ -120,7 +125,8 @@ export default function CuentaPage() {
               <ul className="mb-3 space-y-2 text-sm">
                 {devices.map((d) => (
                   <li key={d.id} className="rounded-xl border border-[var(--border)] bg-[var(--panel-deep)] px-3 py-2">
-                    {d.label} · hasta {formatDate(d.expiresAt)}
+                    {d.label}
+                    {d.isCurrent ? " (este navegador)" : ""} · último acceso {formatDate(d.lastUsedAt)}
                   </li>
                 ))}
                 {!devices.length && <li className="text-[var(--muted)]">Ninguno registrado</li>}
