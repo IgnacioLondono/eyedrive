@@ -87,7 +87,7 @@ function LoginForm() {
   return (
     <AuthShell
       title={step === "code" ? "Código de acceso" : "Iniciar sesión"}
-      subtitle={step === "code" ? `Código enviado a ${pendingEmail}` : "Accede a tu nube personal"}
+      subtitle={step === "code" ? `Revisa tu correo: ${pendingEmail}` : "Accede a tu nube personal"}
     >
       {msg && <AuthMessage type={msg.type === "error" ? "error" : "success"}>{msg.text}</AuthMessage>}
       {step === "credentials" ? (

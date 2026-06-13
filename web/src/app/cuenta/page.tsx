@@ -108,20 +108,22 @@ export default function CuentaPage() {
                     const res = await authApi.updateSecurity(e.target.checked);
                     if (!res.ok) throw new Error("Error");
                     setUser({ ...user, loginCodeEnabled: e.target.checked });
-                    setMsg({ type: "success", text: e.target.checked ? "Código activado." : "Código desactivado." });
+                    setMsg({ type: "success", text: e.target.checked ? "Código activado: se pedirá en cada inicio de sesión." : "Código desactivado." });
                   } catch {
                     setMsg({ type: "error", text: "No se pudo guardar." });
                   }
                 }}
               />
               <span>
-                <span className="font-medium">Código por correo</span>
-                <span className="mt-0.5 block text-[var(--muted)]">Pedir código al iniciar sesión en navegadores nuevos</span>
+                <span className="font-medium">Código por correo al iniciar sesión</span>
+                <span className="mt-0.5 block text-[var(--muted)]">
+                  Si está activado, cada inicio de sesión pedirá un código enviado a tu correo. Los navegadores de confianza solo registran dónde accediste por última vez.
+                </span>
               </span>
             </label>
 
             <div className="mt-6 border-t border-[var(--border)] pt-6">
-              <h3 className="mb-3 text-sm font-medium">Navegadores de confianza</h3>
+              <h3 className="mb-3 text-sm font-medium">Navegadores recientes</h3>
               <ul className="mb-3 space-y-2 text-sm">
                 {devices.map((d) => (
                   <li key={d.id} className="rounded-xl border border-[var(--border)] bg-[var(--panel-deep)] px-3 py-2">
