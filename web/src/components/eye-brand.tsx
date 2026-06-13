@@ -101,9 +101,9 @@ export function EyeBrand({ closeOnPassword = false, className, size = 40 }: Prop
           </linearGradient>
         </defs>
         <rect width={size} height={size} rx={r} fill={`url(#${gradId})`} />
-        <g transform={`translate(${size / 2}, ${size * EYED_MARK.centerYRatio})`}>
+        <g transform={`translate(${size / 2} ${size * EYED_MARK.centerYRatio}) scale(${markScale}) translate(-12 -12)`}>
           <g
-            transform={`scale(${markScale}) translate(-${EYED_MARK.pivotX} -${EYED_MARK.pivotY}) scale(1, ${squint ? 0.12 : 1}) translate(${EYED_MARK.pivotX} ${EYED_MARK.pivotY})`}
+            transform={`translate(${EYED_MARK.pivotX} ${EYED_MARK.pivotY}) scale(1, ${squint ? 0.12 : 1}) translate(-${EYED_MARK.pivotX} -${EYED_MARK.pivotY})`}
           >
             <path
               d={EYED_MARK.outline}

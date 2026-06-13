@@ -25,7 +25,7 @@ sudo mkdir -p /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Et
 sudo chown -R 999:999 /srv/dev-disk-by-uuid-a5b4e34c-5e9b-430c-93ad-0473fe6143d2/data/Etc/Eyedrive
 ```
 
-3. Copia `.env.example` a `.env` y configura SMTP y contraseña de PostgreSQL.
+3. Copia `.env.example` a `.env` y configura Resend y contraseña de PostgreSQL.
 4. Levanta los contenedores:
 
 ```bash
@@ -63,7 +63,7 @@ Nginx actúa como proxy inverso (imagen propia en `nginx/` con la config incluid
 - **Recuperar contraseña** (`/recuperar`): correo → código por email → nueva contraseña.
 - **Mi cuenta** (`/cuenta`): cambiar nombre, contraseña, cerrar sesión.
 
-Sin SMTP configurado, los códigos se imprimen en los logs del contenedor (solo para desarrollo).
+Sin Resend configurado, los códigos se imprimen en los logs del contenedor (solo para desarrollo).
 
 ## Portainer
 
@@ -75,12 +75,8 @@ Sin SMTP configurado, los códigos se imprimen en los logs del contenedor (solo 
 |----------|---------|
 | `APP_URL` | `https://eyedrive.nicolaslondono.uk` |
 | `POSTGRES_PASSWORD` | una clave segura |
-| `SMTP_HOST` | `smtp.gmail.com` |
-| `SMTP_PORT` | `587` |
-| `SMTP_SECURE` | `false` |
-| `SMTP_USER` | `tu-correo@gmail.com` |
-| `SMTP_PASS` | contraseña de aplicación |
-| `SMTP_FROM` | `Eyedrive <tu-correo@gmail.com>` |
+| `RESEND_API_KEY` | `re_...` (desde [Resend](https://resend.com/api-keys)) |
+| `RESEND_FROM` | `Eyedrive <noreply@tu-dominio.com>` |
 | `SESSION_DAYS` | `30` |
 
 4. **Deploy the stack**

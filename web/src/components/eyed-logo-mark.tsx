@@ -29,24 +29,22 @@ export function EyedLogoMark({ size = 32, className, id = "eyed-grad" }: Props) 
         </linearGradient>
       </defs>
       <rect width={size} height={size} rx={r} fill={`url(#${id})`} />
-      <g transform={`translate(${size / 2}, ${size * EYED_MARK.centerYRatio})`}>
-        <g transform={`scale(${markScale}) translate(-12 -12)`}>
-          <path
-            d={EYED_MARK.outline}
-            fill={EYED_BRAND.eye}
-            fillOpacity={0.16}
-            stroke={EYED_BRAND.eye}
-            strokeWidth={1.25}
-            strokeLinejoin="round"
-          />
-          <circle
-            cx={EYED_MARK.pupilX}
-            cy={EYED_MARK.pupilY}
-            r={EYED_MARK.pupilR}
-            fill={EYED_BRAND.eye}
-            stroke="none"
-          />
-        </g>
+      <g transform={`translate(${size / 2} ${size * EYED_MARK.centerYRatio}) scale(${markScale}) translate(-12 -12)`}>
+        <path
+          d={EYED_MARK.outline}
+          fill={EYED_BRAND.eye}
+          fillOpacity={0.16}
+          stroke={EYED_BRAND.eye}
+          strokeWidth={1.25}
+          strokeLinejoin="round"
+        />
+        <circle
+          cx={EYED_MARK.pupilX}
+          cy={EYED_MARK.pupilY}
+          r={EYED_MARK.pupilR}
+          fill={EYED_BRAND.eye}
+          stroke="none"
+        />
       </g>
     </svg>
   );
