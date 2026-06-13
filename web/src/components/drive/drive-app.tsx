@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { CloudUpload, Download, FolderPlus, LayoutGrid, Share2, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { DriveConfirmDialog } from "@/components/drive/drive-confirm-dialog";
 import { DriveContextMenu, type ContextMenuEntry } from "@/components/drive/drive-context-menu";
 import { DriveShell } from "@/components/drive/drive-shell";
 import { MoveDestinationDialog } from "@/components/drive/move-destination-dialog";
@@ -97,6 +98,10 @@ export function DriveApp({ user }: { user: AppUser }) {
   const [newFolderName, setNewFolderName] = useState("");
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; entries: ContextMenuEntry[] } | null>(null);
   const [moveItemIds, setMoveItemIds] = useState<string[] | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ title: string; message: string; action: () => Promise<void> } | null>(
+    null
+  );
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
@@ -138,6 +143,7 @@ export function DriveApp({ user }: { user: AppUser }) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       if (document.querySelector("dialog[open]")) return;
+      if (deleteConfirm) return;
       if (contextMenu) {
         setContextMenu(null);
         return;
@@ -149,7 +155,7 @@ export function DriveApp({ user }: { user: AppUser }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [contextMenu, selected.size]);
+  }, [contextMenu, deleteConfirm, selected.size]);
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -233,31 +239,51 @@ export function DriveApp({ user }: { user: AppUser }) {
     }
   }
 
-  async function onDeleteOne(item: DriveItem) {
-    if (!confirm(`¿Eliminar «${item.name}»?`)) return;
-    try {
-      await deleteItem(item.id);
-      await refresh();
-    } catch {
-      alert("No se pudo eliminar");
-    }
+  function onDeleteOne(item: DriveItem) {
+    const folderNote = item.itemType === "folder" ? " Se borrará todo su contenido." : "";
+    setDeleteConfirm({
+      title: "Eliminar",
+      message: `¿Eliminar «${item.name}»?${folderNote}`,
+      action: async () => {
+        await deleteItem(item.id);
+        await refresh();
+      },
+    });
   }
 
-  async function onDeleteMany(ids: string[]) {
+  function onDeleteMany(ids: string[]) {
     if (!ids.length) return;
-    const msg =
+    const message =
       ids.length === 1
-        ? "¿Eliminar? Si es una carpeta, se borrará todo su contenido."
+        ? "¿Eliminar este elemento? Si es una carpeta, se borrará todo su contenido."
         : `¿Eliminar ${ids.length} elementos? Las carpetas borrarán todo su contenido.`;
-    if (!confirm(msg)) return;
-    for (const id of ids) {
-      try {
-        await deleteItem(id);
-      } catch {
-        /* continue */
-      }
+    setDeleteConfirm({
+      title: ids.length === 1 ? "Eliminar" : `Eliminar ${ids.length} elementos`,
+      message,
+      action: async () => {
+        for (const id of ids) {
+          try {
+            await deleteItem(id);
+          } catch {
+            /* continue */
+          }
+        }
+        await refresh();
+      },
+    });
+  }
+
+  async function confirmDelete() {
+    if (!deleteConfirm || deleteLoading) return;
+    setDeleteLoading(true);
+    try {
+      await deleteConfirm.action();
+      setDeleteConfirm(null);
+    } catch {
+      alert("No se pudo eliminar");
+    } finally {
+      setDeleteLoading(false);
     }
-    await refresh();
   }
 
   async function onShareFolder(item: DriveItem) {
@@ -673,6 +699,16 @@ export function DriveApp({ user }: { user: AppUser }) {
           blockedFolderIds={moveBlockedFolders}
           onCancel={() => setMoveItemIds(null)}
           onConfirm={confirmMove}
+        />
+      )}
+
+      {deleteConfirm && (
+        <DriveConfirmDialog
+          title={deleteConfirm.title}
+          message={deleteConfirm.message}
+          loading={deleteLoading}
+          onCancel={() => !deleteLoading && setDeleteConfirm(null)}
+          onConfirm={confirmDelete}
         />
       )}
 
