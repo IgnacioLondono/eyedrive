@@ -431,7 +431,7 @@ export function DriveApp({ user }: { user: AppUser }) {
         onRefresh={refresh}
         onAreaContextMenu={handleAreaContextMenu}
         onLogout={logout}
-        sidebar={
+        sidebar={(shellNavigate) => (
           <SidebarTree
             flat={treeFlat}
             path={path}
@@ -449,25 +449,27 @@ export function DriveApp({ user }: { user: AppUser }) {
                 return n;
               })
             }
-            onNavigateFolder={navigate}
+            onNavigateFolder={shellNavigate}
             onOpenFile={openItem}
           />
-        }
+        )}
         toolbar={
           <>
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:brightness-110"
+              className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] px-3 py-2 text-sm font-semibold text-white shadow-md transition hover:brightness-110 sm:gap-2 sm:px-4"
             >
-              <CloudUpload className="h-4 w-4" /> Subir
+              <CloudUpload className="h-4 w-4" />
+              <span>Subir</span>
             </button>
             <button
               type="button"
               onClick={() => setNewFolderOpen(true)}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--panel)] px-4 py-2 text-sm font-medium transition hover:border-[var(--text)]"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium transition hover:border-[var(--text)] sm:gap-2 sm:px-4"
             >
-              <FolderPlus className="h-4 w-4" /> Nueva carpeta
+              <FolderPlus className="h-4 w-4" />
+              <span className="max-[380px]:hidden">Nueva carpeta</span>
             </button>
             <button
               type="button"
@@ -488,12 +490,13 @@ export function DriveApp({ user }: { user: AppUser }) {
                     addedAt: "",
                   })
                 }
-                className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 text-sm transition hover:border-[var(--text)]"
+                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-2 text-sm transition hover:border-[var(--text)] sm:gap-2 sm:px-4"
               >
-                <Share2 className="h-4 w-4" /> Compartir
+                <Share2 className="h-4 w-4" />
+                <span className="max-[380px]:hidden">Compartir</span>
               </button>
             )}
-            <span className="ml-auto flex items-center gap-1.5 text-sm text-[var(--muted)]">
+            <span className="ml-auto flex items-center gap-1 text-xs text-[var(--muted)] sm:gap-1.5 sm:text-sm">
               <LayoutGrid className="h-4 w-4" />
               {visible.length} elemento{visible.length === 1 ? "" : "s"}
               {selected.size > 0 && ` · ${selected.size} seleccionado${selected.size === 1 ? "" : "s"}`}
@@ -502,7 +505,7 @@ export function DriveApp({ user }: { user: AppUser }) {
         }
       >
         {uploadPct !== null && (
-          <div className="mx-6 mt-4 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
+          <div className="mx-3 mt-3 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm sm:mx-6 sm:mt-4">
             <div className="mb-2 flex items-center justify-between text-sm">
               <span>Subiendo archivos…</span>
               <span className="font-medium">{uploadPct}%</span>
@@ -517,7 +520,7 @@ export function DriveApp({ user }: { user: AppUser }) {
         )}
 
         <main
-          className="flex-1 px-6 py-5"
+          className="flex-1 px-3 py-4 sm:px-6 sm:py-5"
           onContextMenu={handleBackgroundContextMenu}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
@@ -526,7 +529,7 @@ export function DriveApp({ user }: { user: AppUser }) {
           }}
         >
           {loading ? (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+            <div className="grid grid-cols-2 gap-3 min-[480px]:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] sm:gap-4 lg:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="h-28 animate-pulse rounded-2xl bg-[var(--panel)]" />
               ))}
@@ -544,7 +547,7 @@ export function DriveApp({ user }: { user: AppUser }) {
               <p className="mt-1 text-sm">Arrastra archivos aquí o pulsa para subir</p>
             </button>
           ) : (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+            <div className="grid grid-cols-2 gap-3 min-[480px]:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] sm:gap-4 lg:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
               {visible.map((item) => (
                 <FileCard
                   key={item.id}
