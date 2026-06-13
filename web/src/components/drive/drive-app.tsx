@@ -30,17 +30,45 @@ import { cn, formatDate, formatSize } from "@/lib/utils";
 
 const NAV_KEY = "eyedrive.nav.pathSegments.v1";
 
-function loadPath(): PathSegment[] {
+function normalizeSegments(raw: unknown): PathSegment[] {
+  if (!Array.isArray(raw)) return [];
+  const out: PathSegment[] = [];
+  for (const seg of raw) {
+    if (!seg || typeof seg !== "object") continue;
+    const id = typeof (seg as PathSegment).id === "string" ? (seg as PathSegment).id.trim() : "";
+    const name = typeof (seg as PathSegment).name === "string" ? (seg as PathSegment).name.trim() : "";
+    if (!id || !name) continue;
+    out.push({ id, name });
+  }
+  return out;
+}
+
+function readPersistedPathSegments(): PathSegment[] {
+  try {
+    const fromHistory = normalizeSegments((history.state as { pathSegments?: unknown } | null)?.pathSegments);
+    if (fromHistory.length) return fromHistory;
+  } catch {
+    /* ignore */
+  }
   try {
     const raw = sessionStorage.getItem(NAV_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    return normalizeSegments(JSON.parse(raw));
   } catch {
     return [];
   }
 }
 
-function savePath(segments: PathSegment[]) {
-  sessionStorage.setItem(NAV_KEY, JSON.stringify(segments));
+function writePersistedPathSegments(segments: PathSegment[], { push }: { push: boolean }) {
+  const clean = normalizeSegments(segments);
+  const state = { ...(history.state || {}), pathSegments: clean };
+  if (push) history.pushState(state, "", window.location.href);
+  else history.replaceState(state, "", window.location.href);
+  try {
+    sessionStorage.setItem(NAV_KEY, JSON.stringify(clean));
+  } catch {
+    /* ignore */
+  }
 }
 
 async function copyText(text: string) {
@@ -53,7 +81,9 @@ async function copyText(text: string) {
 
 export function DriveApp({ user }: { user: AppUser }) {
   const router = useRouter();
-  const [path, setPath] = useState<PathSegment[]>([]);
+  const [path, setPath] = useState<PathSegment[]>(() =>
+    typeof window !== "undefined" ? readPersistedPathSegments() : []
+  );
   const [items, setItems] = useState<DriveItem[]>([]);
   const [treeFlat, setTreeFlat] = useState<FlatTreeItem[]>([]);
   const [search, setSearch] = useState("");
@@ -87,11 +117,18 @@ export function DriveApp({ user }: { user: AppUser }) {
   }, [parentId, router]);
 
   useEffect(() => {
-    setPath(loadPath());
+    const onPopState = (ev: PopStateEvent) => {
+      const next = normalizeSegments((ev.state as { pathSegments?: unknown } | null)?.pathSegments);
+      setPath(next);
+      setSearch("");
+      setSelected(new Set());
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
   useEffect(() => {
-    savePath(path);
+    writePersistedPathSegments(path, { push: false });
     setExpanded((prev) => ensureExpandedForPath(prev, path));
     refresh();
   }, [path, refresh]);
@@ -129,10 +166,12 @@ export function DriveApp({ user }: { user: AppUser }) {
     [selectedItems]
   );
 
-  function navigate(segments: PathSegment[]) {
-    setPath(segments);
-    setSearch("");
+  function navigate(segments: PathSegment[], opts?: { push?: boolean; clearSearch?: boolean }) {
+    const clean = normalizeSegments(segments);
+    setPath(clean);
     setSelected(new Set());
+    if (opts?.clearSearch) setSearch("");
+    writePersistedPathSegments(clean, { push: Boolean(opts?.push) });
   }
 
   function openContextMenu(x: number, y: number, entries: ContextMenuEntry[]) {
@@ -141,7 +180,7 @@ export function DriveApp({ user }: { user: AppUser }) {
 
   function openItem(item: DriveItem) {
     if (item.itemType === "folder") {
-      navigate([...path, { id: item.id, name: item.name }]);
+      navigate([...path, { id: item.id, name: item.name }], { push: true });
       return;
     }
     if (isImageItem(item.name, item.mimeType, item.itemType)) {
@@ -312,7 +351,7 @@ export function DriveApp({ user }: { user: AppUser }) {
     if (inside) {
       menu.push(
         { type: "separator" },
-        { label: "Volver a Mi unidad", action: () => navigate([]) },
+        { label: "Volver a Mi unidad", action: () => navigate([], { push: true }) },
         {
           label: "Compartir esta carpeta",
           action: () =>
@@ -329,7 +368,7 @@ export function DriveApp({ user }: { user: AppUser }) {
 
   const buildBreadcrumbMenu = (): ContextMenuEntry[] => {
     const menu: ContextMenuEntry[] = [{ label: "Copiar ruta", action: () => copyText(pathLabel) }];
-    if (path.length) menu.push({ type: "separator" }, { label: "Ir a Mi unidad", action: () => navigate([]) });
+    if (path.length) menu.push({ type: "separator" }, { label: "Ir a Mi unidad", action: () => navigate([], { push: true }) });
     return menu;
   };
 
@@ -425,7 +464,7 @@ export function DriveApp({ user }: { user: AppUser }) {
       <DriveShell
         user={user}
         path={path}
-        onNavigate={navigate}
+        onNavigate={(segments) => navigate(segments, { push: true })}
         search={search}
         onSearchChange={setSearch}
         onRefresh={refresh}
