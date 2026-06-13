@@ -38,7 +38,7 @@ La aplicación queda en el puerto **9990** (nginx delante de Node.js).
 
 La interfaz web está en `web/` (Next.js 16, React 19, TypeScript, Tailwind CSS v4, Lucide, Framer Motion, Geist).
 
-El frontend anterior está respaldado en `backup/legacy-web/`.
+El frontend anterior está respaldado en `backup/legacy-web/` (ya no existe `public/` en la raíz).
 
 Desarrollo local del frontend (con API en el puerto 3000):
 
@@ -60,8 +60,8 @@ Nginx actúa como proxy inverso (imagen propia en `nginx/` con la config incluid
 
 - **Registro**: nombre, correo y contraseña → código de 6 dígitos por email → confirmación.
 - **Inicio de sesión**: correo y contraseña.
-- **Recuperar contraseña** (`/recuperar.html`): correo → código por email → nueva contraseña.
-- **Mi cuenta** (`/cuenta.html`): cambiar nombre, contraseña, cerrar sesión.
+- **Recuperar contraseña** (`/recuperar`): correo → código por email → nueva contraseña.
+- **Mi cuenta** (`/cuenta`): cambiar nombre, contraseña, cerrar sesión.
 
 Sin SMTP configurado, los códigos se imprimen en los logs del contenedor (solo para desarrollo).
 
