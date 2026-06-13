@@ -97,6 +97,7 @@ export function DriveApp({ user }: { user: AppUser }) {
   const [newFolderName, setNewFolderName] = useState("");
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; entries: ContextMenuEntry[] } | null>(null);
   const [moveItemIds, setMoveItemIds] = useState<string[] | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
 
@@ -201,6 +202,22 @@ export function DriveApp({ user }: { user: AppUser }) {
     } finally {
       setUploadPct(null);
     }
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setDragOver(false);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    onUpload(e.dataTransfer.files);
   }
 
   async function submitNewFolder() {
@@ -558,64 +575,80 @@ export function DriveApp({ user }: { user: AppUser }) {
           </div>
         )}
 
-        <main
-          className="flex-1 px-3 py-4 sm:px-6 sm:py-5"
-          onContextMenu={handleBackgroundContextMenu}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => {
-            e.preventDefault();
-            onUpload(e.dataTransfer.files);
-          }}
-        >
+        <main className="flex-1 px-3 py-4 sm:px-6 sm:py-5" onContextMenu={handleBackgroundContextMenu}>
           {loading ? (
             <div className="grid grid-cols-2 gap-3 min-[480px]:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] sm:gap-4 lg:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="h-28 animate-pulse rounded-2xl bg-[var(--panel)]" />
               ))}
             </div>
-          ) : visible.length === 0 ? (
-            <button
-              type="button"
-              className="flex w-full flex-col items-center justify-center rounded-3xl border-2 border-dashed border-[var(--border)] bg-[var(--panel)] py-24 text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--text)]"
-              onClick={() => fileRef.current?.click()}
-            >
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--panel-deep)]">
-                <CloudUpload className="h-8 w-8 opacity-50" />
-              </div>
-              <p className="text-lg font-medium text-[var(--text)]">Esta carpeta está vacía</p>
-              <p className="mt-1 text-sm">Arrastra archivos aquí o pulsa para subir</p>
-            </button>
           ) : (
-            <div className="grid grid-cols-2 gap-3 min-[480px]:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] sm:gap-4 lg:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
-              {visible.map((item) => (
-                <FileCard
-                  key={item.id}
-                  item={item}
-                  selected={selected.has(item.id)}
-                  onToggleSelect={(multi) => {
-                    if (multi) {
-                      setSelected((s) => {
-                        const n = new Set(s);
-                        if (n.has(item.id)) n.delete(item.id);
-                        else n.add(item.id);
-                        return n;
-                      });
-                    } else {
-                      openItem(item);
-                    }
-                  }}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    openContextMenu(e.clientX, e.clientY, buildItemMenu(item));
-                  }}
-                  onDelete={() => onDeleteOne(item)}
-                  onDownload={() => window.location.assign(downloadItemUrl(item))}
-                  onRename={item.itemType === "folder" ? () => onRenameFolder(item) : undefined}
-                  onShare={item.itemType === "folder" ? () => onShareFolder(item) : undefined}
-                />
-              ))}
-            </div>
+            <>
+              <button
+                type="button"
+                className={cn(
+                  "flex w-full flex-col items-center justify-center rounded-3xl border-2 border-dashed border-[var(--border)] bg-[var(--panel)] text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--text)]",
+                  dragOver && "border-[var(--accent)] bg-[var(--panel-deep)] text-[var(--text)]",
+                  visible.length === 0 ? "py-24" : "mb-4 py-6 sm:py-8"
+                )}
+                onClick={() => fileRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                <div
+                  className={cn(
+                    "flex items-center justify-center rounded-2xl bg-[var(--panel-deep)]",
+                    visible.length === 0 ? "mb-4 h-16 w-16" : "mb-3 h-12 w-12"
+                  )}
+                >
+                  <CloudUpload className={cn("opacity-50", visible.length === 0 ? "h-8 w-8" : "h-6 w-6")} />
+                </div>
+                {visible.length === 0 ? (
+                  <>
+                    <p className="text-lg font-medium text-[var(--text)]">Esta carpeta está vacía</p>
+                    <p className="mt-1 text-sm">Arrastra archivos aquí o pulsa para subir</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-base font-medium text-[var(--text)]">Suelta archivos aquí</p>
+                    <p className="mt-1 text-sm">Arrastra archivos o pulsa para subir en esta carpeta</p>
+                  </>
+                )}
+              </button>
+              {visible.length > 0 && (
+                <div className="grid grid-cols-2 gap-3 min-[480px]:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] sm:gap-4 lg:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
+                  {visible.map((item) => (
+                    <FileCard
+                      key={item.id}
+                      item={item}
+                      selected={selected.has(item.id)}
+                      onToggleSelect={(multi) => {
+                        if (multi) {
+                          setSelected((s) => {
+                            const n = new Set(s);
+                            if (n.has(item.id)) n.delete(item.id);
+                            else n.add(item.id);
+                            return n;
+                          });
+                        } else {
+                          openItem(item);
+                        }
+                      }}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openContextMenu(e.clientX, e.clientY, buildItemMenu(item));
+                      }}
+                      onDelete={() => onDeleteOne(item)}
+                      onDownload={() => window.location.assign(downloadItemUrl(item))}
+                      onRename={item.itemType === "folder" ? () => onRenameFolder(item) : undefined}
+                      onShare={item.itemType === "folder" ? () => onShareFolder(item) : undefined}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </main>
       </DriveShell>

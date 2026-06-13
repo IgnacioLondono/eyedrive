@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { EYED_BRAND, EYED_EYE_PATH } from "@/lib/brand";
+import { EYED_BRAND, EYED_CLOUD_PATH, EYED_EYE_PATH } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -22,8 +22,10 @@ export function EyeBrand({ closeOnPassword = false, className, size = 40 }: Prop
   const raf = useRef(0);
 
   const r = Math.round(size * EYED_BRAND.radiusRatio);
-  const eyeScale = (size * 0.55) / EYE_VIEW;
-  const offset = (size - EYE_VIEW * eyeScale) / 2;
+  const cloudScale = (size * 0.72) / EYE_VIEW;
+  const cloudOffset = (size - EYE_VIEW * cloudScale) / 2;
+  const eyeScale = (size * 0.5) / EYE_VIEW;
+  const eyeOffset = (size - EYE_VIEW * eyeScale) / 2;
   const squint = closed || blink;
 
   useEffect(() => {
@@ -104,7 +106,10 @@ export function EyeBrand({ closeOnPassword = false, className, size = 40 }: Prop
           </linearGradient>
         </defs>
         <rect width={size} height={size} rx={r} fill={`url(#${gradId})`} />
-        <g transform={`translate(${offset}, ${offset}) scale(${eyeScale})`}>
+        <g transform={`translate(${cloudOffset}, ${cloudOffset + size * 0.06}) scale(${cloudScale})`}>
+          <path d={EYED_CLOUD_PATH} fill={EYED_BRAND.eye} fillOpacity={0.9} stroke="none" />
+        </g>
+        <g transform={`translate(${eyeOffset}, ${eyeOffset - size * 0.03}) scale(${eyeScale})`}>
           <g transform={`translate(12, 12) scale(1, ${squint ? 0.12 : 1}) translate(-12, -12)`}>
             <path
               d={EYED_EYE_PATH}
