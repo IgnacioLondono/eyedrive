@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Carpeta compartida — Eyedrive</title>
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,500;0,9..40,700;0,9..40,800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="share-only">
+    <div class="app share-app">
+      <main class="content share-content">
+        <header class="share-hero">
+          <span class="share-hero-ic" id="shareBrandIcon" aria-hidden="true"></span>
+          <h1 class="share-title">Eyedrive</h1>
+          <p class="share-sub">Vista compartida · solo lectura</p>
+        </header>
+        <nav id="shareBreadcrumb" class="breadcrumb share-breadcrumb" aria-label="Ruta"></nav>
+        <div class="share-actions">
+          <span id="shareSelectionInfo" class="share-selection-info">0 seleccionados</span>
+          <button id="shareThemeToggleBtn" class="btn-secondary btn-ic theme-toggle-btn icon-only" type="button" title="Cambiar tema" aria-label="Cambiar tema">
+            <span class="btn-icon" id="icShareThemeToggle" aria-hidden="true"></span>
+          </button>
+          <label class="search-wrap share-search-wrap" for="shareSearchInput">
+            <span class="search-ic" id="shareSearchIcon" aria-hidden="true"></span>
+            <input
+              id="shareSearchInput"
+              type="search"
+              placeholder="Buscar en esta carpeta…"
+              autocomplete="off"
+            />
+          </label>
+          <button id="shareDownloadCurrentBtn" class="btn-secondary btn-ic" type="button">
+            <span class="btn-text">Descargar esta carpeta</span>
+          </button>
+          <button id="shareSelectAllBtn" class="btn-secondary btn-ic" type="button">
+            <span class="btn-text">Seleccionar todo</span>
+          </button>
+          <button id="shareClearSelectionBtn" class="btn-secondary btn-ic" type="button" disabled>
+            <span class="btn-text">Limpiar selección</span>
+          </button>
+          <button id="shareDownloadSelectedBtn" class="btn-primary btn-ic" type="button" disabled>
+            <span class="btn-text">Descargar selección</span>
+          </button>
+        </div>
+        <p id="shareError" class="share-error" role="alert" hidden></p>
+        <div id="shareGrid" class="file-grid share-grid"></div>
+        <p id="shareEmpty" class="empty-state share-empty" hidden>
+          <span class="empty-illu empty-illu--sm" id="shareEmptyIcon" aria-hidden="true"></span>
+          <span>Esta carpeta está vacía.</span>
+        </p>
+      </main>
+    </div>
+    <template id="shareCardTemplate">
+      <article class="file-card share-readonly" tabindex="0">
+        <div class="file-icon" aria-hidden="true"></div>
+        <div class="file-meta">
+          <p class="file-name"></p>
+          <small class="file-info"></small>
+        </div>
+      </article>
+    </template>
+    <script>
+      window.__SHARE_TOKEN__ = (location.pathname.split("/").pop() || "").trim();
+    </script>
+    <script src="/icons.js"></script>
+    <script src="/file-utils.js"></script>
+    <script src="/compartir.js"></script>
+  </body>
+</html>

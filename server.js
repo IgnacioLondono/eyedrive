@@ -6,8 +6,14 @@ const cookieParser = require("cookie-parser");
 const multer = require("multer");
 const { Pool } = require("pg");
 const archiver = require("archiver");
+const next = require(path.join(__dirname, "web", "node_modules", "next"));
 const { sendVerificationCode } = require("./lib/email");
 const { mountAuthRoutes, requireAuth } = require("./lib/auth");
+
+const WEB_DIR = path.join(__dirname, "web");
+const dev = process.env.NODE_ENV !== "production";
+const nextApp = next({ dev, dir: WEB_DIR });
+const nextHandler = nextApp.getRequestHandler();
 
 const PORT = Number(process.env.PORT) || 3000;
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, "data", "uploads");
@@ -254,12 +260,19 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true, service: "eyedrive" });
 });
 
-app.get("/compartir/:token", (req, res) => {
-  if (!TOKEN_RE.test(req.params.token)) {
-    return res.status(400).type("text/plain").send("Enlace no válido");
-  }
-  res.sendFile(path.join(__dirname, "public", "compartir.html"));
-});
+const LEGACY_HTML = {
+  "/login.html": "/login",
+  "/registro.html": "/registro",
+  "/confirmar.html": "/registro/confirmar",
+  "/recuperar.html": "/recuperar",
+  "/recuperar-confirmar.html": "/recuperar/confirmar",
+  "/cuenta.html": "/cuenta",
+  "/login-confirmar.html": "/login?step=code",
+  "/index.html": "/",
+};
+for (const [from, to] of Object.entries(LEGACY_HTML)) {
+  app.get(from, (_req, res) => res.redirect(301, to));
+}
 
 app.get("/api/items", requireAuth, async (req, res) => {
   const p = toParentUuid(req.query.parentId);
@@ -1068,12 +1081,13 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-app.use(express.static(path.join(__dirname, "public")));
+app.all("*", (req, res) => nextHandler(req, res));
 
 async function start() {
   ensureUploadDir();
   await waitForDb();
   await initDb();
+  await nextApp.prepare();
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`eyedrive en http://0.0.0.0:${PORT}`);
   });

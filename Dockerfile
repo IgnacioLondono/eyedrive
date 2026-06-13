@@ -7,9 +7,15 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm install --omit=dev
 
+COPY web/package.json web/package-lock.json ./web/
+RUN cd web && npm ci
+
+COPY web ./web
+RUN cd web && npm run build
+
 COPY server.js ./
 COPY lib ./lib
-COPY public ./public
+COPY backup ./backup
 
 RUN mkdir -p /app/data/uploads
 

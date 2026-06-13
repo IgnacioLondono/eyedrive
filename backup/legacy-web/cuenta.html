@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mi cuenta — Eyedrive</title>
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="apple-touch-icon" href="favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;0,9..40,800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="auth.css" />
+  </head>
+  <body class="account-page">
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-icon" id="brandIcon" aria-hidden="true"></span>
+          <h1>Eyedrive</h1>
+        </div>
+        <nav class="side-nav">
+          <a class="side-link" href="/">
+            <span class="side-link-ic" id="icNavDrive" aria-hidden="true"></span>
+            <span>Mi unidad</span>
+          </a>
+        </nav>
+      </aside>
+
+      <main class="content">
+        <header class="topbar account-topbar">
+          <h2 class="content-heading account-topbar__title">Configuración de cuenta</h2>
+          <div class="stats" id="accountTopbarStats">
+            <button
+              id="themeToggleBtn"
+              class="btn-secondary btn-ic theme-toggle-btn icon-only"
+              type="button"
+              title="Cambiar tema"
+              aria-label="Cambiar tema"
+            >
+              <span class="btn-icon" id="icThemeToggle" aria-hidden="true"></span>
+            </button>
+          </div>
+        </header>
+
+        <div class="account-panel">
+          <div id="accountMessage" class="auth-message" hidden></div>
+
+          <section class="account-section">
+            <h3>Perfil</h3>
+            <form id="profileForm" class="auth-form">
+              <div class="auth-field">
+                <label for="displayName">Nombre visible</label>
+                <input id="displayName" type="text" maxlength="80" required />
+              </div>
+              <button type="submit" class="btn-primary">Guardar cambios</button>
+            </form>
+          </section>
+
+          <section class="account-section">
+            <h3>Información</h3>
+            <div class="account-row">
+              <label>Correo</label>
+              <span id="accountEmail">—</span>
+            </div>
+            <div class="account-row">
+              <label>Estado del correo</label>
+              <span id="accountVerified">—</span>
+            </div>
+          </section>
+
+          <section class="account-section">
+            <h3>Seguridad</h3>
+            <p class="auth-subtitle account-section__hint">
+              Si activas el código de acceso, en navegadores nuevos te pediremos un código por correo. Este
+              navegador quedará registrado al confirmarlo y no volverá a pedirlo aquí.
+            </p>
+            <label class="account-toggle">
+              <input type="checkbox" id="loginCodeEnabled" />
+              <span>Exigir código de acceso al iniciar sesión</span>
+            </label>
+
+            <div id="trustedDevicesWrap" class="trusted-devices" hidden>
+              <h4 class="trusted-devices__title">Navegadores registrados</h4>
+              <ul id="trustedDevicesList" class="trusted-devices__list"></ul>
+              <button type="button" id="revokeAllDevicesBtn" class="btn-secondary">
+                Quitar todos los navegadores
+              </button>
+            </div>
+          </section>
+
+          <section class="account-section">
+            <h3>Contraseña</h3>
+            <form id="passwordForm" class="auth-form">
+              <div class="auth-field">
+                <label for="currentPassword">Contraseña actual</label>
+                <input id="currentPassword" type="password" required autocomplete="current-password" />
+              </div>
+              <div class="auth-field">
+                <label for="newPassword">Nueva contraseña</label>
+                <input id="newPassword" type="password" required minlength="8" autocomplete="new-password" />
+              </div>
+              <div class="auth-field">
+                <label for="confirmNewPassword">Confirmar nueva contraseña</label>
+                <input id="confirmNewPassword" type="password" required minlength="8" autocomplete="new-password" />
+              </div>
+              <button type="submit" class="btn-primary">Cambiar contraseña</button>
+            </form>
+          </section>
+
+          <section class="account-section">
+            <h3>Sesión</h3>
+            <p class="auth-subtitle account-section__hint">
+              Cierra sesión en este dispositivo o en todos los dispositivos.
+            </p>
+            <div class="auth-actions account-session-actions">
+              <button type="button" id="logoutBtn" class="btn-secondary">Cerrar sesión</button>
+              <button type="button" id="logoutAllBtn" class="btn-secondary">Cerrar en todos</button>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+    <script src="auth-client.js"></script>
+    <script src="icons.js"></script>
+    <script src="eye-brand.js"></script>
+    <script src="cuenta.js"></script>
+  </body>
+</html>

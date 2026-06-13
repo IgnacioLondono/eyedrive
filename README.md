@@ -34,6 +34,20 @@ docker compose up -d --build
 
 La aplicación queda en el puerto **9990** (nginx delante de Node.js).
 
+## Frontend (Next.js)
+
+La interfaz web está en `web/` (Next.js 16, React 19, TypeScript, Tailwind CSS v4, Lucide, Framer Motion, Geist).
+
+El frontend anterior está respaldado en `backup/legacy-web/`.
+
+Desarrollo local del frontend (con API en el puerto 3000):
+
+```bash
+cd web && npm install && npm run dev
+```
+
+Producción: el `Dockerfile` compila `web/` y Express sirve Next.js en el mismo origen (cookies y subidas sin CORS).
+
 ## Arquitectura
 
 ```

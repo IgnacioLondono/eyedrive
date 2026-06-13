@@ -1,0 +1,308 @@
+const THEME_KEY = "eyedrive.theme.v1";
+
+function showMessage(text, type = "info") {
+  const el = document.getElementById("accountMessage");
+  if (!el) return;
+  el.hidden = false;
+  el.textContent = text;
+  el.className = `auth-message auth-message--${type}`;
+}
+
+function applyTheme(theme) {
+  const t = theme === "dark" ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", t);
+  const themeToggleBtn = document.getElementById("themeToggleBtn");
+  if (themeToggleBtn) {
+    const title = t === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro";
+    themeToggleBtn.title = title;
+    themeToggleBtn.setAttribute("aria-label", title);
+    const ic = document.getElementById("icThemeToggle");
+    if (ic && window.EyeIcons) ic.innerHTML = t === "dark" ? window.EyeIcons.sun() : window.EyeIcons.moon();
+  }
+}
+
+function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  applyTheme(saved || (prefersDark ? "dark" : "light"));
+}
+
+function userInitials(name, email) {
+  const src = (name || email || "?").trim();
+  const parts = src.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return src.slice(0, 2).toUpperCase();
+}
+
+function renderUserMenu(user) {
+  const stats = document.getElementById("accountTopbarStats");
+  if (!stats || !user) return;
+
+  let menu = document.getElementById("userMenu");
+  if (!menu) {
+    menu = document.createElement("div");
+    menu.id = "userMenu";
+    menu.className = "user-menu";
+    menu.innerHTML = `
+      <button type="button" class="user-menu-btn" id="userMenuBtn" aria-haspopup="true" aria-expanded="false">
+        <span class="user-avatar" id="userAvatar"></span>
+        <span id="userMenuLabel"></span>
+      </button>
+      <div class="user-menu-dropdown" id="userMenuDropdown" hidden>
+        <div class="user-menu-email" id="userMenuEmail"></div>
+        <a href="/cuenta.html" aria-current="page">Mi cuenta</a>
+        <a href="/">Mi unidad</a>
+        <button type="button" id="userLogoutBtn">Cerrar sesión</button>
+      </div>`;
+    stats.insertBefore(menu, stats.firstChild);
+
+    document.getElementById("userMenuBtn")?.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const dd = document.getElementById("userMenuDropdown");
+      const open = dd?.hidden;
+      if (dd) dd.hidden = !open;
+      document.getElementById("userMenuBtn")?.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+
+    document.getElementById("userLogoutBtn")?.addEventListener("click", async () => {
+      await fetch("/api/auth/logout", window.EyeAuth.fetchJsonOpts({ method: "POST" }));
+      window.EyeAuth.clearSessionToken();
+      window.location.replace("/login.html");
+    });
+
+    document.addEventListener("click", () => {
+      const dd = document.getElementById("userMenuDropdown");
+      if (dd) dd.hidden = true;
+      document.getElementById("userMenuBtn")?.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  const label = user.displayName || user.email.split("@")[0];
+  const avatar = document.getElementById("userAvatar");
+  const menuLabel = document.getElementById("userMenuLabel");
+  const menuEmail = document.getElementById("userMenuEmail");
+  if (avatar) avatar.textContent = userInitials(user.displayName, user.email);
+  if (menuLabel) menuLabel.textContent = label;
+  if (menuEmail) menuEmail.textContent = user.email;
+}
+
+async function loadAccount() {
+  const res = await fetch("/api/auth/me", window.EyeAuth.fetchOpts());
+  if (!res.ok) {
+    window.location.replace("/login.html");
+    return null;
+  }
+  return res.json();
+}
+
+function authJsonPayload(payload) {
+  return JSON.stringify({
+    ...(payload || {}),
+    deviceId: window.EyeAuth.getDeviceId(),
+  });
+}
+
+function formatDeviceDate(value) {
+  if (!value) return "—";
+  try {
+    return new Date(value).toLocaleString("es-ES", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  } catch {
+    return "—";
+  }
+}
+
+async function loadTrustedDevices() {
+  const wrap = document.getElementById("trustedDevicesWrap");
+  const list = document.getElementById("trustedDevicesList");
+  const enabled = document.getElementById("loginCodeEnabled")?.checked;
+  if (!wrap || !list || !enabled) {
+    if (wrap) wrap.hidden = true;
+    return;
+  }
+
+  const res = await fetch(
+    `/api/auth/account/devices?deviceId=${encodeURIComponent(window.EyeAuth.getDeviceId())}`,
+    window.EyeAuth.fetchOpts()
+  );
+  if (!res.ok) {
+    wrap.hidden = true;
+    return;
+  }
+
+  const data = await res.json().catch(() => ({ devices: [] }));
+  const devices = data.devices || [];
+  wrap.hidden = devices.length === 0;
+  list.innerHTML = devices
+    .map(
+      (device) => `
+      <li class="trusted-device-item">
+        <div class="trusted-device-item__meta">
+          <span class="trusted-device-item__label">${device.label}${device.isCurrent ? " (este navegador)" : ""}</span>
+          <span class="trusted-device-item__date">Último acceso: ${formatDeviceDate(device.lastUsedAt)}</span>
+        </div>
+        ${
+          device.isCurrent
+            ? `<span class="trusted-device-item__badge">Actual</span>`
+            : `<button type="button" class="btn-secondary btn-small" data-device-id="${device.id}">Quitar</button>`
+        }
+      </li>`
+    )
+    .join("");
+
+  list.querySelectorAll("[data-device-id]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.getAttribute("data-device-id");
+      try {
+        const res = await fetch(
+          `/api/auth/account/devices/${id}`,
+          window.EyeAuth.fetchJsonOpts({ method: "DELETE" })
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "No se pudo quitar el dispositivo");
+        showMessage("Navegador quitado.", "success");
+        await loadTrustedDevices();
+      } catch (e) {
+        showMessage(e.message, "error");
+      }
+    });
+  });
+}
+
+async function init() {
+  initTheme();
+
+  if (window.EyeIcons) {
+    const driveIc = document.getElementById("icNavDrive");
+    const themeIc = document.getElementById("icThemeToggle");
+    if (driveIc) driveIc.innerHTML = window.EyeIcons.hardDrive();
+    const t = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+    if (themeIc) themeIc.innerHTML = t === "dark" ? window.EyeIcons.sun() : window.EyeIcons.moon();
+  }
+
+  document.getElementById("themeToggleBtn")?.addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+    const next = current === "dark" ? "light" : "dark";
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+  });
+
+  const user = await loadAccount();
+  if (!user) return;
+
+  renderUserMenu(user);
+
+  document.getElementById("displayName").value = user.displayName || "";
+  document.getElementById("accountEmail").textContent = user.email;
+  document.getElementById("accountVerified").textContent = user.emailVerified ? "Verificado" : "Pendiente";
+
+  const loginCodeToggle = document.getElementById("loginCodeEnabled");
+  if (loginCodeToggle) {
+    loginCodeToggle.checked = Boolean(user.loginCodeEnabled);
+    loginCodeToggle.addEventListener("change", async () => {
+      const loginCodeEnabled = loginCodeToggle.checked;
+      try {
+        const res = await fetch(
+          "/api/auth/account/security",
+          window.EyeAuth.fetchJsonOpts({
+            method: "PATCH",
+            body: authJsonPayload({ loginCodeEnabled }),
+          })
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "No se pudo guardar");
+        user.loginCodeEnabled = loginCodeEnabled;
+        showMessage(
+          loginCodeEnabled
+            ? "Código de acceso activado. Este navegador ya quedó registrado."
+            : "Código de acceso desactivado.",
+          "success"
+        );
+        await loadTrustedDevices();
+      } catch (e) {
+        loginCodeToggle.checked = !loginCodeEnabled;
+        showMessage(e.message, "error");
+      }
+    });
+  }
+
+  await loadTrustedDevices();
+
+  document.getElementById("revokeAllDevicesBtn")?.addEventListener("click", async () => {
+    try {
+      const res = await fetch(
+        "/api/auth/account/devices",
+        window.EyeAuth.fetchJsonOpts({ method: "DELETE" })
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudieron quitar los navegadores");
+      showMessage("Se quitaron todos los navegadores registrados.", "success");
+      await loadTrustedDevices();
+    } catch (e) {
+      showMessage(e.message, "error");
+    }
+  });
+
+  document.getElementById("profileForm")?.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const displayName = document.getElementById("displayName").value.trim();
+    try {
+      const res = await fetch(
+        "/api/auth/account",
+        window.EyeAuth.fetchJsonOpts({
+          method: "PATCH",
+          body: JSON.stringify({ displayName }),
+        })
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error");
+      user.displayName = displayName;
+      renderUserMenu(user);
+      showMessage("Perfil actualizado.", "success");
+    } catch (e) {
+      showMessage(e.message, "error");
+    }
+  });
+
+  document.getElementById("passwordForm")?.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const currentPassword = document.getElementById("currentPassword").value;
+    const newPassword = document.getElementById("newPassword").value;
+    const confirmPassword = document.getElementById("confirmNewPassword").value;
+    if (newPassword !== confirmPassword) {
+      showMessage("Las contraseñas nuevas no coinciden.", "error");
+      return;
+    }
+    try {
+      const res = await fetch(
+        "/api/auth/account/password",
+        window.EyeAuth.fetchJsonOpts({
+          method: "PATCH",
+          body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+        })
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Error");
+      document.getElementById("passwordForm").reset();
+      showMessage("Contraseña actualizada.", "success");
+    } catch (e) {
+      showMessage(e.message, "error");
+    }
+  });
+
+  document.getElementById("logoutBtn")?.addEventListener("click", async () => {
+    await fetch("/api/auth/logout", window.EyeAuth.fetchJsonOpts({ method: "POST" }));
+    window.EyeAuth.clearSessionToken();
+    window.location.replace("/login.html");
+  });
+
+  document.getElementById("logoutAllBtn")?.addEventListener("click", async () => {
+    await fetch("/api/auth/sessions", window.EyeAuth.fetchJsonOpts({ method: "DELETE" }));
+    window.EyeAuth.clearSessionToken();
+    window.location.replace("/login.html");
+  });
+}
+
+init();
