@@ -21,6 +21,8 @@ import {
   previewItemUrl,
   renameFolder,
   uploadFiles,
+  UploadCancelledError,
+  relativePathsFromFileList,
 } from "@/lib/api";
 import { clearSessionToken } from "@/lib/auth";
 import { getFileIcon, getFileKindLabel, isImageItem } from "@/lib/files";
@@ -91,6 +93,8 @@ export function DriveApp({ user }: { user: AppUser }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [uploadPct, setUploadPct] = useState<number | null>(null);
+  const [uploadLabel, setUploadLabel] = useState("");
+  const uploadAbortRef = useRef<AbortController | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(["ROOT"]));
   const [rootExpanded, setRootExpanded] = useState(true);
@@ -199,15 +203,38 @@ export function DriveApp({ user }: { user: AppUser }) {
 
   async function onUpload(files: FileList | null) {
     if (!files?.length) return;
+    uploadAbortRef.current?.abort();
+    const controller = new AbortController();
+    uploadAbortRef.current = controller;
+    const fileArray = Array.from(files);
+    const paths = relativePathsFromFileList(fileArray);
+    const usePaths = paths.some((p) => p.trim().length > 0);
     setUploadPct(0);
+    setUploadLabel(`Preparando… 0 de ${fileArray.length} archivos`);
     try {
-      await uploadFiles(Array.from(files), parentId, undefined, setUploadPct);
+      await uploadFiles(
+        fileArray,
+        parentId,
+        usePaths ? paths : undefined,
+        ({ pct, label }) => {
+          setUploadPct(pct);
+          setUploadLabel(label);
+        },
+        { signal: controller.signal }
+      );
       await refresh();
     } catch (e) {
+      if (e instanceof UploadCancelledError) return;
       alert(e instanceof Error ? e.message : "Error al subir");
     } finally {
+      if (uploadAbortRef.current === controller) uploadAbortRef.current = null;
       setUploadPct(null);
+      setUploadLabel("");
     }
+  }
+
+  function cancelUpload() {
+    uploadAbortRef.current?.abort();
   }
 
   function handleDragOver(e: React.DragEvent) {
@@ -588,9 +615,18 @@ export function DriveApp({ user }: { user: AppUser }) {
       >
         {uploadPct !== null && (
           <div className="mx-3 mt-3 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm sm:mx-6 sm:mt-4">
-            <div className="mb-2 flex items-center justify-between text-sm">
-              <span>Subiendo archivos…</span>
-              <span className="font-medium">{uploadPct}%</span>
+            <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+              <span className="min-w-0 truncate">{uploadLabel || "Subiendo archivos…"}</span>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="font-medium">{uploadPct}%</span>
+                <button
+                  type="button"
+                  onClick={cancelUpload}
+                  className="rounded-full border border-[var(--border)] px-2.5 py-1 text-xs transition hover:border-[var(--text)]"
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-[var(--panel-deep)]">
               <motion.div

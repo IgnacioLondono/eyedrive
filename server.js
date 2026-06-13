@@ -18,7 +18,7 @@ const nextHandler = nextApp.getRequestHandler();
 const PORT = Number(process.env.PORT) || 3000;
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, "data", "uploads");
 const MAX_FILE_BYTES = Number.parseInt(
-  process.env.MAX_FILE_BYTES || String(8 * 1024 * 1024 * 1024),
+  process.env.MAX_FILE_BYTES || String(100 * 1024 * 1024 * 1024),
   10
 );
 /* Límite por petición (subida en lotes en el cliente). Máx. 200000 por entorno. */
@@ -1088,9 +1088,11 @@ async function start() {
   await waitForDb();
   await initDb();
   await nextApp.prepare();
-  app.listen(PORT, "0.0.0.0", () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`eyedrive en http://0.0.0.0:${PORT}`);
   });
+  server.requestTimeout = 0;
+  server.headersTimeout = 0;
 }
 
 start().catch((err) => {

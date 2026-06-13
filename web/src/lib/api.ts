@@ -83,42 +83,12 @@ export function previewItemUrl(id: string): string {
   return authGetUrl(`/api/files/${id}/preview`);
 }
 
-export async function uploadFiles(
-  files: File[],
-  parentId: string | null,
-  relativePaths?: string[],
-  onProgress?: (pct: number) => void
-): Promise<void> {
-  const form = new FormData();
-  files.forEach((f) => form.append("files", f));
-  if (parentId) form.append("parentId", parentId);
-  if (relativePaths) relativePaths.forEach((p) => form.append("relativePaths", p));
-
-  await new Promise<void>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/upload");
-    xhr.withCredentials = true;
-    const token = typeof window !== "undefined" ? sessionStorage.getItem("eyedrive.sessionToken") : "";
-    if (token) xhr.setRequestHeader("X-Session-Token", token);
-    xhr.setRequestHeader("X-Device-Id", getDeviceId());
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
-    };
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) resolve();
-      else {
-        try {
-          const data = JSON.parse(xhr.responseText);
-          reject(new Error(data.error || "Error al subir"));
-        } catch {
-          reject(new Error("Error al subir"));
-        }
-      }
-    };
-    xhr.onerror = () => reject(new Error("Error de red"));
-    xhr.send(form);
-  });
-}
+export {
+  uploadFilesBatched as uploadFiles,
+  UploadCancelledError,
+  relativePathsFromFileList,
+  type UploadProgress,
+} from "./upload";
 
 // Auth API helpers
 export const authApi = {
